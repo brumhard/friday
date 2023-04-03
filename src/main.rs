@@ -1,3 +1,4 @@
+use friday_rust::{Command, Config, Error, Result};
 use std::{
     env,
     fs::{self, File},
@@ -5,10 +6,11 @@ use std::{
     process::exit,
 };
 
-use friday_rust::{Command, Config, Error, Result};
-
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
+    // see https://github.com/rust-lang/log
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
+
     let cfg = Config::from_args(env::args()).unwrap_or_else(|e| {
         eprintln!("failed to load options: {e}");
         exit(1)
@@ -21,6 +23,7 @@ fn main() {
 }
 
 fn run(cfg: Config) -> Result<()> {
+    log::debug!("running with config '{:?}'", cfg);
     let input = cfg.input.unwrap_or_default();
     let path = cfg.file;
 

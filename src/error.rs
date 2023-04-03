@@ -1,5 +1,7 @@
 use std::io;
 
+// See https://kerkour.com/rust-error-handling
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Invalid argument: {0}")]
