@@ -1,4 +1,4 @@
-use std::{convert, env, fmt, path::Path, str};
+use std::{convert, env, fmt, str};
 
 use crate::Error;
 
@@ -60,11 +60,6 @@ impl Config {
         });
 
         let file = env::var("FRIDAY_FILE").unwrap_or_else(|_| DEFAULT_FILE.to_string());
-        if !Path::new(&file).is_file() {
-            return Err(Error::InvalidArgument(
-                "FRIDAY_FILE must point to a valid file".to_string(),
-            ));
-        };
 
         Ok(Config {
             action,

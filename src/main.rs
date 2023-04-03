@@ -7,6 +7,7 @@ use std::{
 };
 
 const DEFAULT_EDITOR: &str = "vi";
+const HEADER_BYTES: &[u8] = b"# It's friday my dudes\n";
 
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
@@ -28,6 +29,8 @@ fn run(cfg: Config) -> Result<()> {
     log::debug!("running with config '{:?}'", cfg);
     let input = cfg.input.unwrap_or_default();
     let path = cfg.file;
+
+    ensure_header(&path)?;
 
     use Action::*;
     match cfg.action {
@@ -62,23 +65,38 @@ fn edit_file(path: &str) -> Result<()> {
 
     cmd.status().map_err(|e| match e {
         ref e if e.kind() == io::ErrorKind::NotFound => {
-            Error::InvalidArgument("EDITOR could not be found".to_string())
+            Error::InvalidArgument(format!("EDITOR {editor} could not be found").to_string())
         }
         e => Error::from(e),
     })?;
     Ok(())
 }
 
+fn open_file(path: &str) -> Result<File> {
+    let file = File::options()
+        .create(true)
+        .append(true)
+        .read(true)
+        .open(path)?;
+    Ok(file)
+}
+
+fn ensure_header(path: &str) -> Result<()> {
+    let mut file = open_file(path)?;
+    if file.metadata()?.len() == 0 {
+        file.write_all(HEADER_BYTES)?;
+    }
+    Ok(())
+}
+
 fn add(path: &str, input: &str) -> Result<()> {
-    if input.is_empty() {
+    if input.trim().is_empty() {
         return Err(Error::InvalidArgument(
             "expected non-empty input".to_string(),
         ));
     }
 
-    let mut file = File::options().append(true).create(true).open(path)?;
-    file.write_all(input.as_bytes())?;
-    file.write_all(b"\n")?;
+    open_file(path)?.write_all(format!("\n- {input}").as_bytes())?;
     Ok(())
 }
 
