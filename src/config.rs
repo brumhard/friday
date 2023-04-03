@@ -16,8 +16,8 @@ impl TryFrom<&str> for Command {
         match value {
             "add" => Ok(Command::Add),
             "show" => Ok(Command::Show),
-            "help" => Ok(Command::Help),
-            cmd => Err(Error::InvalidArgument(cmd.to_string())),
+            "help" | "" => Ok(Command::Help),
+            cmd => Err(Error::InvalidCommand(cmd.to_string())),
         }
     }
 }
