@@ -1,4 +1,4 @@
-pub use config::Config;
+pub use config::*;
 pub use error::Error;
 
 mod config;

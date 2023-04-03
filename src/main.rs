@@ -5,7 +5,7 @@ use std::{
     process::exit,
 };
 
-use friday_rust::{Config, Error, Result};
+use friday_rust::{Command, Config, Error, Result};
 
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
@@ -23,8 +23,10 @@ fn main() {
 fn run(cfg: Config) -> Result<()> {
     let input = cfg.input.unwrap_or_default();
     let path = cfg.file;
-    match cfg.action.as_str() {
-        "add" => {
+
+    use Command::*;
+    match cfg.action {
+        Add => {
             if input.is_empty() {
                 return Err(Error::InvalidArgument(
                     "expected non-empty input".to_string(),
@@ -32,8 +34,7 @@ fn run(cfg: Config) -> Result<()> {
             }
             add(&path, &input)
         }
-        "show" => show_file(&path),
-        cmd => Err(Error::InvalidCommand(cmd.to_string())),
+        Show => show_file(&path),
     }
 }
 
