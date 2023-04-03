@@ -1,4 +1,4 @@
-use std::io;
+use std::{convert, io};
 
 // See https://kerkour.com/rust-error-handling
 
@@ -12,7 +12,7 @@ pub enum Error {
     IO(io::Error),
 }
 
-impl std::convert::From<io::Error> for Error {
+impl convert::From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Error::IO(err)
     }

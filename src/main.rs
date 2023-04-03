@@ -1,10 +1,12 @@
-use friday_rust::{Command, Config, Error, Result};
+use friday_rust::{Action, Config, Error, Result};
 use std::{
     env,
     fs::{self, File},
-    io::Write,
-    process::exit,
+    io::{self, Write},
+    process::{exit, Command},
 };
+
+const DEFAULT_EDITOR: &str = "vi";
 
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
@@ -27,15 +29,44 @@ fn run(cfg: Config) -> Result<()> {
     let input = cfg.input.unwrap_or_default();
     let path = cfg.file;
 
-    use Command::*;
+    use Action::*;
     match cfg.action {
         Add => add(&path, &input),
         Show => show_file(&path),
+        Edit => edit_file(&path),
         Help => {
             print_help();
             Ok(())
         }
     }
+}
+
+fn edit_file(path: &str) -> Result<()> {
+    let mut editor = env::var("EDITOR").unwrap_or_default();
+    // also handles case where EDITOR is set to "" explictly
+    if editor.trim().is_empty() {
+        log::debug!("resetting EDITOR to default");
+        editor = DEFAULT_EDITOR.to_string()
+    }
+
+    // in case the editor env var contains args like e.g. `code -w`
+    // it's necessary to split it up into program and args.
+    let mut editor_parts = editor.split(' ');
+    // since editor is checked before, it will have at least one part
+    let mut cmd = Command::new(editor_parts.next().unwrap());
+    // use rest of parts as args
+    cmd.args(editor_parts);
+    cmd.arg(path);
+
+    log::debug!("running command: {:?}", cmd);
+
+    cmd.status().map_err(|e| match e {
+        ref e if e.kind() == io::ErrorKind::NotFound => {
+            Error::InvalidArgument("EDITOR could not be found".to_string())
+        }
+        e => Error::from(e),
+    })?;
+    Ok(())
 }
 
 fn add(path: &str, input: &str) -> Result<()> {
