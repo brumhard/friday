@@ -1,3 +1,4 @@
+use colored::Colorize;
 use friday_rust::{Action, Config, Error, Result};
 use std::{
     env,
@@ -7,7 +8,14 @@ use std::{
 };
 
 const DEFAULT_EDITOR: &str = "vi";
-const HEADER_BYTES: &[u8] = b"# It's friday my dudes\n";
+const HEADER_BYTES: &[u8] = b"\
+# It's friday my dudes
+
+## TODO
+- define your own sections
+
+## Dump
+- this is where added stuff lands";
 
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
@@ -101,8 +109,20 @@ fn add(path: &str, input: &str) -> Result<()> {
 }
 
 fn show_file(path: &str) -> Result<()> {
-    let test = fs::read_to_string(path)?;
-    println!("{test}");
+    let file_content = fs::read_to_string(path)?;
+    for line in file_content.lines() {
+        let mut output = line.normal();
+        // handles any heading
+        if line.starts_with('#') {
+            output = line.cyan().bold();
+        }
+        // handles the topmost heading
+        if line.starts_with("# ") {
+            output = output.underline();
+        }
+
+        println!("{output}")
+    }
     Ok(())
 }
 
