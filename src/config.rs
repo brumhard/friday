@@ -7,6 +7,7 @@ const FRIDAY_FILE: &str = "test";
 pub enum Command {
     Show,
     Add,
+    Help,
 }
 
 impl TryFrom<&str> for Command {
@@ -15,6 +16,7 @@ impl TryFrom<&str> for Command {
         match value {
             "add" => Ok(Command::Add),
             "show" => Ok(Command::Show),
+            "help" => Ok(Command::Help),
             cmd => Err(Error::InvalidArgument(cmd.to_string())),
         }
     }

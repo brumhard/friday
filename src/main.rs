@@ -26,19 +26,22 @@ fn run(cfg: Config) -> Result<()> {
 
     use Command::*;
     match cfg.action {
-        Add => {
-            if input.is_empty() {
-                return Err(Error::InvalidArgument(
-                    "expected non-empty input".to_string(),
-                ));
-            }
-            add(&path, &input)
-        }
+        Add => add(&path, &input),
         Show => show_file(&path),
+        Help => {
+            print_help();
+            Ok(())
+        }
     }
 }
 
 fn add(path: &str, input: &str) -> Result<()> {
+    if input.is_empty() {
+        return Err(Error::InvalidArgument(
+            "expected non-empty input".to_string(),
+        ));
+    }
+
     let mut file = File::options().append(true).create(true).open(path)?;
     file.write_all(input.as_bytes())?;
     file.write_all(b"\n")?;
@@ -49,4 +52,20 @@ fn show_file(path: &str) -> Result<()> {
     let test = fs::read_to_string(path)?;
     println!("{test}");
     Ok(())
+}
+
+fn print_help() {
+    println!(
+        "\
+This binary let's you manage stuff to do on fridays.
+
+The following commands are available:
+    help            -> Print this help text.
+    add <string>    -> Add a string to the end of the file.
+    show            -> Show the contents of the file.
+
+The location of the file that should be used can be configured
+globally using the `FRIDAY_FILE` env var.
+"
+    )
 }
