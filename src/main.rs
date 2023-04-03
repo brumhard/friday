@@ -73,7 +73,7 @@ fn edit_file(path: &str) -> Result<()> {
 
     cmd.status().map_err(|e| match e {
         ref e if e.kind() == io::ErrorKind::NotFound => {
-            Error::InvalidArgument(format!("EDITOR {editor} could not be found").to_string())
+            Error::InvalidArgument(format!("EDITOR {editor} could not be found"))
         }
         e => Error::from(e),
     })?;

@@ -2,7 +2,7 @@ use std::{convert, env, fmt, str};
 
 use crate::Error;
 
-const DEFAULT_FILE: &str = "test";
+const DEFAULT_FILE: &str = "friday.md";
 
 #[derive(Debug)]
 pub enum Action {
@@ -59,7 +59,15 @@ impl Config {
             iter
         });
 
-        let file = env::var("FRIDAY_FILE").unwrap_or_else(|_| DEFAULT_FILE.to_string());
+        let mut file = env::var("FRIDAY_FILE").unwrap_or_default();
+        if file.trim().is_empty() {
+            let home = dirs::home_dir().ok_or_else(|| {
+                Error::InvalidArgument("failed to get users home dir".to_string())
+            })?;
+            // since home dir is always a valid path and `DEFAULT_FILE` also
+            // there won't be any loss when converting.
+            file = home.join(DEFAULT_FILE).to_string_lossy().to_string();
+        }
 
         Ok(Config {
             action,
