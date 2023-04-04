@@ -2,8 +2,8 @@ use std::{error::Error, fs};
 
 use assert_cmd::Command;
 
-fn friday() -> Command {
-    Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap()
+fn friday_cli() -> Command {
+    Command::cargo_bin("cli").unwrap()
 }
 
 // NOTE: it would also be possible to move the code in main.rs to lib.rs and only call
@@ -14,7 +14,7 @@ fn friday() -> Command {
 // Anyways, it's nice to test the whole interface of the CLI as well e2e.
 #[test]
 fn it_prints_help_on_empty_action() {
-    let cmd = friday().assert();
+    let cmd = friday_cli().assert();
     let output = cmd.get_output();
     let output_str = String::from_utf8_lossy(&output.stdout).to_string();
     assert!(
@@ -29,10 +29,9 @@ fn it_adds_to_file() -> Result<(), Box<dyn Error>> {
     let tmp_dir = tempdir::TempDir::new("testing")?;
     let file_path = tmp_dir.path().join("friday.md");
     let to_add = "something that should be added";
-    friday()
+    friday_cli()
         .arg("add")
         .arg(to_add)
-        // TODO: set temp file
         .env("FRIDAY_FILE", file_path.to_string_lossy().to_string())
         .assert()
         .success();
