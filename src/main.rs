@@ -22,7 +22,7 @@ fn main() {
     // see https://github.com/rust-lang/log
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
 
-    let cfg = Config::from_args(env::args()).unwrap_or_else(|e| {
+    let cfg = Config::build(env::args(), env::vars().collect()).unwrap_or_else(|e| {
         eprintln!("failed to load options: {e}");
         exit(1)
     });
@@ -62,7 +62,7 @@ fn edit_file(path: &str) -> Result<()> {
 
     // in case the editor env var contains args like e.g. `code -w`
     // it's necessary to split it up into program and args.
-    let mut editor_parts = editor.split(' ');
+    let mut editor_parts = editor.split_whitespace();
     // since editor is checked before, it will have at least one part
     let mut cmd = Command::new(editor_parts.next().unwrap());
     // use rest of parts as args
