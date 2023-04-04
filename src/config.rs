@@ -1,10 +1,10 @@
-use std::{collections::HashMap, convert, env, fmt, str};
+use std::{collections::HashMap, convert, fmt, str};
 
 use crate::Error;
 
 const DEFAULT_FILE: &str = "friday.md";
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Action {
     Show,
     Add,
@@ -40,7 +40,7 @@ impl fmt::Display for Action {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Config {
     pub action: Action,
     pub input: Option<String>,
@@ -48,6 +48,7 @@ pub struct Config {
 }
 
 impl Config {
+    // TODO: add doc test here: https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#documentation-comments-as-tests
     pub fn build(
         mut args: impl Iterator<Item = String>,
         env_vars: HashMap<String, String>,
@@ -80,4 +81,44 @@ impl Config {
     }
 }
 
-// TODO: add tests https://doc.rust-lang.org/stable/book/ch11-00-testing.html
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Result;
+
+    #[test]
+    fn config_is_created() -> Result<()> {
+        let friday_file = "testing".to_string();
+
+        let args = vec!["binary".to_string(), "show".to_string()];
+        let env_vars = HashMap::from([("FRIDAY_FILE".to_string(), friday_file.clone())]);
+        let cfg = Config::build(args.into_iter(), env_vars)?;
+        assert_eq!(
+            cfg,
+            Config {
+                action: Action::Show,
+                file: friday_file,
+                input: None
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn config_fails_for_invalid_enum() {
+        let args = vec!["binary".to_string(), "invalid".to_string()];
+        let cfg = Config::build(args.into_iter(), HashMap::new());
+        assert!(cfg.is_err());
+    }
+
+    #[test]
+    fn config_join_args_to_input() -> Result<()> {
+        let args: Vec<String> = vec!["binary", "add", "this", "is", "joined"]
+            .iter()
+            .map(|&s| s.to_string())
+            .collect();
+        let cfg = Config::build(args.into_iter(), HashMap::new())?;
+        assert_eq!(cfg.input, Some("this is joined".to_string()));
+        Ok(())
+    }
+}
