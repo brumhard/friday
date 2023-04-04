@@ -4,4 +4,4 @@
 .direnv/
 .envrc
 # file to test cli
-test 
+test*

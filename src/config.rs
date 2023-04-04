@@ -1,4 +1,4 @@
-use std::{convert, env, fmt, str};
+use std::{collections::HashMap, convert, env, fmt, str};
 
 use crate::Error;
 
@@ -48,7 +48,10 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_args(mut args: impl Iterator<Item = String>) -> Result<Config, Error> {
+    pub fn build(
+        mut args: impl Iterator<Item = String>,
+        env_vars: HashMap<String, String>,
+    ) -> Result<Config, Error> {
         // first item is binary name
         args.next();
 
@@ -59,7 +62,7 @@ impl Config {
             iter
         });
 
-        let mut file = env::var("FRIDAY_FILE").unwrap_or_default();
+        let mut file = env_vars.get("FRIDAY_FILE").cloned().unwrap_or_default();
         if file.trim().is_empty() {
             let home = dirs::home_dir().ok_or_else(|| {
                 Error::InvalidArgument("failed to get users home dir".to_string())
