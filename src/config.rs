@@ -4,7 +4,7 @@ use crate::Error;
 
 const DEFAULT_FILE: &str = "friday.md";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Action {
     Show,
     Add,
@@ -40,7 +40,7 @@ impl fmt::Display for Action {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     pub action: Action,
     pub input: Option<String>,
@@ -81,6 +81,7 @@ impl Config {
     }
 }
 
+// TODO: try to do table driven tests with macros: https://users.rust-lang.org/t/table-driven-aka-data-driven-testing/3848
 #[cfg(test)]
 mod tests {
     use super::*;
