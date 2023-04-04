@@ -6,6 +6,12 @@ fn friday() -> Command {
     Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap()
 }
 
+// NOTE: it would also be possible to move the code in main.rs to lib.rs and only call
+// run in the main.rs. Then, run could be tested here without the need to really run
+// a binary here.
+// This is documented here: https://doc.rust-lang.org/book/ch11-03-test-organization.html#integration-tests-for-binary-crates.
+//
+// Anyways, it's nice to test the whole interface of the CLI as well e2e.
 #[test]
 fn it_prints_help_on_empty_action() {
     let cmd = friday().assert();

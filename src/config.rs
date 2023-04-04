@@ -81,11 +81,39 @@ impl Config {
     }
 }
 
-// TODO: try to do table driven tests with macros: https://users.rust-lang.org/t/table-driven-aka-data-driven-testing/3848
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Result;
+
+    // This is a way to create table driven tests.
+    // It's definitely overkill here but whatever.
+    // https://users.rust-lang.org/t/table-driven-aka-data-driven-testing/3848
+    macro_rules! test_config_input {
+        ($name:ident, $($in:expr),+ => $out:expr) => {
+            #[test]
+            fn $name() -> Result<()> {
+                let args: Vec<String> = vec!["binary", "add", $($in, )*]
+                    .iter()
+                    .map(|&s| s.to_string())
+                    .collect();
+                let cfg = Config::build(args.into_iter(), HashMap::new())?;
+                assert!(cfg.input.is_some());
+                let input = cfg.input.unwrap();
+                assert_eq!(input, $out.to_string());
+                Ok(())
+            }
+        };
+    }
+
+    test_config_input!(
+        multiple_inputs,
+        "these", "args", "are", "joined", "together" => "these args are joined together"
+    );
+    test_config_input!(
+        single_input,
+        "this is a single string argument" => "this is a single string argument"
+    );
 
     #[test]
     fn config_is_created() -> Result<()> {
@@ -110,16 +138,5 @@ mod tests {
         let args = vec!["binary".to_string(), "invalid".to_string()];
         let cfg = Config::build(args.into_iter(), HashMap::new());
         assert!(cfg.is_err());
-    }
-
-    #[test]
-    fn config_join_args_to_input() -> Result<()> {
-        let args: Vec<String> = vec!["binary", "add", "this", "is", "joined"]
-            .iter()
-            .map(|&s| s.to_string())
-            .collect();
-        let cfg = Config::build(args.into_iter(), HashMap::new())?;
-        assert_eq!(cfg.input, Some("this is joined".to_string()));
-        Ok(())
     }
 }
