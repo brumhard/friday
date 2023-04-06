@@ -71,7 +71,7 @@ impl<T: AsRef<Path>> FileBackedRepo<T> {
     pub fn new(path: T) -> Result<FileBackedRepo<T>> {
         let file = File::options().create(true).append(true).open(&path)?;
         if file.metadata()?.len() == 0 {
-            write!(&file, "# It's friday my dudes\n")?;
+            writeln!(&file, "# It's friday my dudes")?;
         }
         Ok(FileBackedRepo { file: path })
     }

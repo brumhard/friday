@@ -49,7 +49,7 @@ impl<T: Repo> Manager for DefaultManager<T> {
                 "found more than one match for pattern {pattern}"
             )));
         }
-        if matching_tasks.len() < 1 {
+        if matching_tasks.is_empty() {
             return Err(Error::InvalidArgument(format!(
                 "no match found for pattern {pattern}"
             )));

@@ -32,7 +32,7 @@ fn run(cfg: Config) -> Result<()> {
     let repo = FileBackedRepo::new(&cfg.file)?;
     let manager = DefaultManager::new(repo);
 
-    if manager.sections()?.len() == 0 {
+    if manager.sections()?.is_empty() {
         manager.add("this where stuff lands by default", Some("dump"))?;
         manager.add("start here", Some("TODO"))?;
     }
@@ -76,10 +76,11 @@ fn edit_file(path: &str) -> Result<()> {
 
 fn show(sections: HashMap<Section, Vec<String>>) -> Result<()> {
     for (section, tasks) in sections {
-        println!("## {}", section.to_string().cyan());
+        let section_header = format!("## {section}").cyan();
+        println!("{section_header}");
 
         for task in tasks {
-            println!("- {}", task.to_string())
+            println!("- {task}",)
         }
 
         println!()
