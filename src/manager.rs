@@ -1,10 +1,4 @@
-use std::{
-    collections::HashMap,
-    default, fmt,
-    fs::{self, File},
-    path::{Path, PathBuf},
-    str,
-};
+use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 
 use crate::{Error, Result};
 
@@ -52,11 +46,57 @@ trait Manager {
 trait Repo {
     fn create(&self, task: &str, section: Section) -> Result<()>;
     fn list(&self, section: Section) -> Result<Vec<String>>;
-    fn delete(&self, pattern: &str, section: Section) -> Result<()>;
+    fn delete(&self, task: &str, section: Section) -> Result<()>;
 }
 
 struct FileBackedRepo<T: AsRef<Path>> {
     file: T,
+}
+
+struct Line {
+    section: Section,
+    content: LineContent,
+}
+
+enum LineContent {
+    Ignored(String),
+    Task(String),
+    Section(String),
+}
+
+impl LineContent {
+    fn stripped(&self) -> String {
+        if let LineContent::Ignored(x) = self {
+            return x.to_string();
+        }
+
+        self.to_string()
+            .split_whitespace()
+            .skip(1)
+            .collect::<Vec<&str>>()
+            .join(" ")
+    }
+}
+
+impl fmt::Display for LineContent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ignored(x) => write!(f, "{x}"),
+            Self::Task(x) => write!(f, "{x}"),
+            Self::Section(x) => write!(f, "{x}"),
+        }
+    }
+}
+
+impl str::FromStr for LineContent {
+    type Err = std::convert::Infallible;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.trim() {
+            x if x.starts_with('-') => Ok(Self::Task(s.to_string())),
+            x if x.starts_with("##") => Ok(Self::Section(s.to_string())),
+            _ => Ok(Self::Ignored(s.to_string())),
+        }
+    }
 }
 
 impl<T: AsRef<Path>> FileBackedRepo<T> {
@@ -64,79 +104,145 @@ impl<T: AsRef<Path>> FileBackedRepo<T> {
         Ok(FileBackedRepo { file: path })
     }
 
-    fn open_file(&self) -> Result<File> {
-        let file = File::options()
-            .create(true)
-            .append(true)
-            .read(true)
-            .open(&self.file)?;
-        Ok(file)
+    fn lines(&self) -> Result<Vec<Line>> {
+        let file_content = fs::read_to_string(&self.file)?;
+        let mut current_section: Section = Default::default();
+        let mut lines = Vec::new();
+        // the use of split instead of lines() is intended to keep the
+        // any trailing newline characters in the file
+        for line in file_content.split('\n') {
+            let content = line.parse().unwrap();
+            if matches!(content, LineContent::Section(_)) {
+                current_section = content.stripped().parse().unwrap();
+            }
+
+            lines.push(Line {
+                section: current_section.to_owned(),
+                content,
+            })
+        }
+        Ok(lines)
+    }
+
+    fn dump_lines(&self, lines: Vec<Line>) -> Result<()> {
+        let content = lines
+            .iter()
+            .map(|l| l.content.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        fs::write(&self.file, content)?;
+        Ok(())
     }
 
     fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
-        let file_content = fs::read_to_string(&self.file)?;
-        let valid_lines = file_content
-            .lines()
-            .map(|line| line.trim())
-            .filter(|&line| line.starts_with('-') || line.starts_with("##"));
         let mut sections_to_tasks: HashMap<Section, Vec<String>> = HashMap::new();
-
-        let mut current_section: Section = Default::default();
-        for line in valid_lines {
-            let content = line
-                .split_whitespace()
-                .skip(1)
-                .collect::<Vec<&str>>()
-                .join(" ");
-
-            if line.starts_with("##") {
-                current_section = content.parse().unwrap();
-                continue;
-            }
-
+        let lines = self.lines()?;
+        let task_lines = lines
+            .iter()
+            .filter(|l| matches!(l.content, LineContent::Task(_)));
+        for line in task_lines {
             sections_to_tasks
-                .entry(current_section.clone())
+                .entry(line.section.clone())
                 .or_default()
-                .push(content);
+                .push(line.content.stripped());
         }
-
         Ok(sections_to_tasks)
-    }
-
-    fn filter_for_section(&self, section: Section) -> Result<Vec<String>> {
-        let sections = self.sections()?;
-        let tasks = sections
-            .get(&section)
-            .ok_or_else(|| {
-                Error::InvalidArgument(format!("section {section} not found").to_string())
-            })?
-            .to_owned();
-        Ok(tasks)
     }
 }
 
 impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
     fn create(&self, task: &str, section: Section) -> Result<()> {
-        todo!()
+        let mut lines = self.lines()?;
+
+        let mut last_line_in_section = None;
+        let mut first_section_line = None;
+        for (i, line) in lines.iter().enumerate() {
+            if matches!(line.content, LineContent::Ignored(_)) {
+                continue;
+            }
+
+            if matches!(line.content, LineContent::Section(_)) && first_section_line.is_none() {
+                first_section_line = Some(i);
+            }
+
+            if line.section == section {
+                last_line_in_section = Some(i);
+                continue;
+            }
+
+            if last_line_in_section.is_some() {
+                break;
+            }
+        }
+
+        if last_line_in_section.is_none() {
+            let section_line = Line {
+                section: section.to_owned(),
+                content: LineContent::Section(format!("## {}", section)),
+            };
+            // insert section either before the first other section
+            // or at the end if there are no sections yet
+            if let Some(line) = first_section_line {
+                lines.insert(line, section_line);
+                last_line_in_section = Some(line);
+            } else {
+                lines.push(section_line);
+                last_line_in_section = Some(lines.len() - 1)
+            }
+        }
+
+        // insert task after last_line_in_section
+        lines.insert(
+            last_line_in_section.unwrap() + 1,
+            Line {
+                section,
+                content: LineContent::Task(format!("- {task}")),
+            },
+        );
+
+        self.dump_lines(lines)
     }
 
-    fn delete(&self, pattern: &str, section: Section) -> Result<()> {
-        todo!()
+    fn delete(&self, task: &str, section: Section) -> Result<()> {
+        let mut lines = self.lines()?;
+        let mut remove_index = None;
+        for (i, line) in lines.iter().enumerate() {
+            if !matches!(line.content, LineContent::Task(_)) || line.section != section {
+                continue;
+            }
+
+            if line.content.stripped() == task {
+                remove_index = Some(i);
+                break;
+            }
+        }
+        if remove_index.is_none() {
+            return Ok(());
+        }
+
+        lines.remove(remove_index.unwrap());
+        self.dump_lines(lines)
     }
 
     fn list(&self, section: Section) -> Result<Vec<String>> {
-        todo!()
+        let sections = self.sections()?;
+        let tasks = sections
+            .get(&section)
+            .ok_or_else(|| Error::InvalidArgument(format!("section {section} not found")))?
+            .to_owned();
+        Ok(tasks)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use tempdir::TempDir;
-
     use super::*;
     use std::error::Error;
+    use std::fs::File;
+    use std::path::PathBuf;
     use std::vec;
     use std::{io::Write, result::Result};
+    use tempdir::TempDir;
 
     // the returned temp_dir is only returned to keep the reference and not destroy it
     // before the function tests are done.
@@ -144,7 +250,7 @@ mod tests {
         let tmp_dir = tempdir::TempDir::new("example")?;
         let file_path = tmp_dir.path().join("testing");
         let mut tmp_file = File::create(&file_path)?;
-        writeln!(tmp_file, "{content}")?;
+        write!(tmp_file, "{content}")?;
         let file_repo = FileBackedRepo::new(file_path)?;
         Ok((file_repo, tmp_dir))
     }
@@ -206,18 +312,115 @@ mod tests {
 <!-- This is some comment -->",
         (Section::Dump, vec!("this is somewhere in the file"))
     );
+    test_sections!(
+        sections_ignores_whitespace,
+        "       - this is somewhere in the file",
+        (Section::Dump, vec!("this is somewhere in the file"))
+    );
 
     #[test]
-    fn filter_for_section_returns_error_on_not_found() {
+    fn list_returns_error_on_not_found() {
         let (file_repo, _tmp_dir) = setup("").unwrap();
-        assert!(file_repo.filter_for_section(Section::Dump).is_err())
+        assert!(file_repo.list(Section::Dump).is_err())
     }
 
     #[test]
-    fn filter_for_section_works() -> Result<(), Box<dyn Error>> {
-        let (file_repo, _tmp_dir) = setup("##Dump\n- something")?;
-        let items = file_repo.filter_for_section(Section::Dump)?;
+    fn list_works() -> Result<(), Box<dyn Error>> {
+        let (file_repo, _tmp_dir) = setup("## Dump\n- something")?;
+        let items = file_repo.list(Section::Dump)?;
         assert_eq!(items, vec!("something".to_string()));
         Ok(())
     }
+
+    #[test]
+    fn no_change_on_lines_and_dump_lines() -> Result<(), Box<dyn Error>> {
+        let initial_content = "## Dump\n- something\n";
+        let (file_repo, _tmp_dir) = setup(initial_content)?;
+        let content = fs::read_to_string(&file_repo.file)?;
+        assert_eq!(initial_content, content);
+
+        let lines = file_repo.lines()?;
+        file_repo.dump_lines(lines)?;
+
+        let content = fs::read_to_string(&file_repo.file)?;
+        assert_eq!(initial_content, content);
+        Ok(())
+    }
+
+    struct RepoTest<'a> {
+        initial: &'a str,
+        new_task: &'a str,
+        section: Section,
+        expected: &'a str,
+    }
+    macro_rules! test_repo {
+        ($method:ident, $name:ident, $tt:expr) => {
+            #[test]
+            fn $name() -> Result<(), Box<dyn Error>> {
+                let (file_repo, _tmp_dir) = setup($tt.initial)?;
+                file_repo.$method($tt.new_task, $tt.section)?;
+                let content = fs::read_to_string(file_repo.file)?;
+                assert_eq!(content, $tt.expected);
+                Ok(())
+            }
+        };
+    }
+    macro_rules! test_create {
+        ($name:ident, $tt:expr) => {
+            test_repo!(create, $name, $tt);
+        };
+    }
+    macro_rules! test_delete {
+        ($name:ident, $tt:expr) => {
+            test_repo!(delete, $name, $tt);
+        };
+    }
+
+    test_create!(
+        create_adds_to_existing_section,
+        RepoTest {
+            initial: "## Dump\n- something",
+            new_task: "something else",
+            section: Section::Dump,
+            expected: "## Dump\n- something\n- something else",
+        }
+    );
+
+    test_create!(
+        create_adds_new_section,
+        RepoTest {
+            initial: "## Dump\n- something",
+            new_task: "something else",
+            section: Section::Custom("else".to_string()),
+            expected: "## else\n- something else\n## Dump\n- something",
+        }
+    );
+
+    test_create!(
+        create_adds_initial_section,
+        RepoTest {
+            initial: "# This is just a heading",
+            new_task: "something else",
+            section: Section::Custom("else".to_string()),
+            expected: "# This is just a heading\n## else\n- something else",
+        }
+    );
+    test_delete!(
+        delete_works,
+        RepoTest {
+            initial: "## Dump\n- something\n- something else\n",
+            new_task: "something else",
+            section: Section::Dump,
+            expected: "## Dump\n- something\n",
+        }
+    );
+    test_delete!(
+        delete_doesnt_delete_anything_else,
+        RepoTest {
+            initial: "## Dump\n- something\n- something else\n",
+            new_task: "something not in the file",
+            section: Section::Dump,
+            expected: "## Dump\n- something\n- something else\n",
+        }
+    );
 }
