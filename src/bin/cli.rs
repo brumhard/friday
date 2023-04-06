@@ -1,21 +1,15 @@
 use colored::Colorize;
-use friday_rust::{Action, Config, Error, Result};
+use friday_rust::{
+    Action, Config, DefaultManager, Error, FileBackedRepo, Manager, Result, Section,
+};
 use std::{
+    collections::HashMap,
     env,
-    fs::{self, File},
-    io::{self, Write},
+    io::{self},
     process::{exit, Command},
 };
 
 const DEFAULT_EDITOR: &str = "vi";
-const HEADER_BYTES: &[u8] = b"\
-# It's friday my dudes
-
-## TODO
-- define your own sections
-
-## Dump
-- this is where added stuff lands";
 
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
@@ -35,20 +29,20 @@ fn main() {
 
 fn run(cfg: Config) -> Result<()> {
     log::debug!("running with config '{:?}'", cfg);
-    let input = cfg.input.unwrap_or_default();
-    let path = cfg.file;
+    let repo = FileBackedRepo::new(&cfg.file)?;
+    let manager = DefaultManager::new(repo);
 
-    ensure_header(&path)?;
+    if manager.sections()?.len() == 0 {
+        manager.add("this where stuff lands by default", Some("dump"))?;
+        manager.add("start here", Some("TODO"))?;
+    }
 
     use Action::*;
     match cfg.action {
-        Add => add(&path, &input),
-        Show => show_file(&path),
-        Edit => edit_file(&path),
-        Help => {
-            print_help();
-            Ok(())
-        }
+        Add => manager.add(cfg.input.unwrap_or_default().as_str(), None),
+        Show => show(manager.sections()?),
+        Edit => edit_file(&cfg.file),
+        Help => print_help(),
     }
 }
 
@@ -80,53 +74,20 @@ fn edit_file(path: &str) -> Result<()> {
     Ok(())
 }
 
-fn open_file(path: &str) -> Result<File> {
-    let file = File::options()
-        .create(true)
-        .append(true)
-        .read(true)
-        .open(path)?;
-    Ok(file)
-}
+fn show(sections: HashMap<Section, Vec<String>>) -> Result<()> {
+    for (section, tasks) in sections {
+        println!("## {}", section.to_string().cyan());
 
-fn ensure_header(path: &str) -> Result<()> {
-    let mut file = open_file(path)?;
-    if file.metadata()?.len() == 0 {
-        file.write_all(HEADER_BYTES)?;
-    }
-    Ok(())
-}
-
-fn add(path: &str, input: &str) -> Result<()> {
-    if input.trim().is_empty() {
-        return Err(Error::InvalidArgument(
-            "expected non-empty input".to_string(),
-        ));
-    }
-
-    open_file(path)?.write_all(format!("\n- {input}").as_bytes())?;
-    Ok(())
-}
-
-fn show_file(path: &str) -> Result<()> {
-    let file_content = fs::read_to_string(path)?;
-    for line in file_content.lines() {
-        let mut output = line.normal();
-        // handles any heading
-        if line.starts_with('#') {
-            output = line.cyan().bold();
-        }
-        // handles the topmost heading
-        if line.starts_with("# ") {
-            output = output.underline();
+        for task in tasks {
+            println!("- {}", task.to_string())
         }
 
-        println!("{output}")
+        println!()
     }
     Ok(())
 }
 
-fn print_help() {
+fn print_help() -> Result<()> {
     println!(
         "\
 This binary let's you manage stuff to do on fridays.
@@ -139,5 +100,6 @@ The following commands are available:
 The location of the file that should be used can be configured
 globally using the `FRIDAY_FILE` env var.
 "
-    )
+    );
+    Ok(())
 }

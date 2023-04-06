@@ -13,10 +13,11 @@ use mockall::automock;
 pub trait Repo {
     fn create(&self, task: &str, section: Section) -> Result<()>;
     fn list(&self, section: Section) -> Result<Vec<String>>;
+    fn list_all(&self) -> Result<HashMap<Section, Vec<String>>>;
     fn delete(&self, task: &str, section: Section) -> Result<()>;
 }
 
-struct FileBackedRepo<T: AsRef<Path>> {
+pub struct FileBackedRepo<T: AsRef<Path>> {
     file: T,
 }
 
@@ -67,7 +68,7 @@ impl str::FromStr for LineContent {
 }
 
 impl<T: AsRef<Path>> FileBackedRepo<T> {
-    fn new(path: T) -> Result<FileBackedRepo<T>> {
+    pub fn new(path: T) -> Result<FileBackedRepo<T>> {
         let file = File::options().create(true).append(true).open(&path)?;
         if file.metadata()?.len() == 0 {
             write!(&file, "# It's friday my dudes\n")?;
@@ -103,21 +104,6 @@ impl<T: AsRef<Path>> FileBackedRepo<T> {
             .join("\n");
         fs::write(&self.file, content)?;
         Ok(())
-    }
-
-    fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
-        let mut sections_to_tasks: HashMap<Section, Vec<String>> = HashMap::new();
-        let lines = self.lines()?;
-        let task_lines = lines
-            .iter()
-            .filter(|l| matches!(l.content, LineContent::Task(_)));
-        for line in task_lines {
-            sections_to_tasks
-                .entry(line.section.clone())
-                .or_default()
-                .push(line.content.stripped());
-        }
-        Ok(sections_to_tasks)
     }
 }
 
@@ -196,12 +182,27 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
     }
 
     fn list(&self, section: Section) -> Result<Vec<String>> {
-        let sections = self.sections()?;
+        let sections = self.list_all()?;
         let tasks = sections
             .get(&section)
             .ok_or_else(|| Error::InvalidArgument(format!("section {section} not found")))?
             .to_owned();
         Ok(tasks)
+    }
+
+    fn list_all(&self) -> Result<HashMap<Section, Vec<String>>> {
+        let mut sections_to_tasks: HashMap<Section, Vec<String>> = HashMap::new();
+        let lines = self.lines()?;
+        let task_lines = lines
+            .iter()
+            .filter(|l| matches!(l.content, LineContent::Task(_)));
+        for line in task_lines {
+            sections_to_tasks
+                .entry(line.section.clone())
+                .or_default()
+                .push(line.content.stripped());
+        }
+        Ok(sections_to_tasks)
     }
 }
 
@@ -234,12 +235,12 @@ mod tests {
         Ok((file_repo, tmp_dir))
     }
 
-    macro_rules! test_sections {
+    macro_rules! test_list_all {
         ($name:ident, $in:expr $(,($key:expr, $value:expr))*) => {
             #[test]
             fn $name() -> Result<(), Box<dyn Error>> {
                 let (file_repo, _tmp_dir) = setup($in)?;
-                let sections = file_repo.sections()?;
+                let sections = file_repo.list_all()?;
                 assert_eq!(
                     sections,
                     HashMap::from([$(
@@ -251,16 +252,16 @@ mod tests {
         };
     }
 
-    test_sections!(sections_no_content, "");
-    test_sections!(
-        sections_only_dump,
+    test_list_all!(list_all_no_content, "");
+    test_list_all!(
+        list_all_only_dump,
         "\
 ## Dump
 - in dump section",
         (Section::Dump, vec!("in dump section"))
     );
-    test_sections!(
-        sections_multiple,
+    test_list_all!(
+        list_all_multiple,
         "\
 ## Dump
 - in dump section
@@ -273,8 +274,8 @@ mod tests {
             vec!("in something")
         )
     );
-    test_sections!(
-        sections_ignore_toplevel_headings_and_comments,
+    test_list_all!(
+        list_all_ignore_toplevel_headings_and_comments,
         "\
 # Toplevel heading
 ## Dump
@@ -282,8 +283,8 @@ mod tests {
 <!-- This is some comment -->",
         (Section::Dump, vec!("in dump section"))
     );
-    test_sections!(
-        sections_uses_dump_as_default,
+    test_list_all!(
+        list_all_uses_dump_as_default,
         "\
 # Toplevel heading
 
@@ -291,8 +292,8 @@ mod tests {
 <!-- This is some comment -->",
         (Section::Dump, vec!("this is somewhere in the file"))
     );
-    test_sections!(
-        sections_ignores_whitespace,
+    test_list_all!(
+        list_all_ignores_whitespace,
         "       - this is somewhere in the file",
         (Section::Dump, vec!("this is somewhere in the file"))
     );

@@ -1,29 +1,36 @@
-use crate::{Error, Repo, Result};
-use std::str;
+use crate::{Error, Repo, Result, Section};
+use std::{collections::HashMap, str};
 
-trait Manager {
+pub trait Manager {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()>;
     fn list(&self, section: Option<&str>) -> Result<Vec<String>>;
+    fn sections(&self) -> Result<HashMap<Section, Vec<String>>>;
     fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()>;
-    fn manage(&self) -> Result<()> {
-        // TODO: this is probably not the right pattern for this
-        panic!("this should not be used if not implemented")
-    }
 }
 
-struct DefaultManager<T: Repo> {
+pub struct DefaultManager<T: Repo> {
     repo: T,
 }
 
 impl<T: Repo> DefaultManager<T> {
-    fn new(repo: T) -> DefaultManager<T> {
+    pub fn new(repo: T) -> DefaultManager<T> {
         DefaultManager { repo }
     }
 }
 
 impl<T: Repo> Manager for DefaultManager<T> {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()> {
+        if task.trim().is_empty() {
+            return Err(Error::InvalidArgument(
+                "expected non-empty task".to_string(),
+            ));
+        }
+
         self.repo.create(task, section.into())
+    }
+
+    fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
+        self.repo.list_all()
     }
 
     fn list(&self, section: Option<&str>) -> Result<Vec<String>> {
