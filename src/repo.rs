@@ -5,6 +5,10 @@ use std::fs::File;
 use std::str;
 use std::{fs, path::Path};
 
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
 pub trait Repo {
     fn create(&self, task: &str, section: Section) -> Result<()>;
     fn list(&self, section: Section) -> Result<Vec<String>>;

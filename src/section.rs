@@ -32,3 +32,12 @@ impl str::FromStr for Section {
         }
     }
 }
+
+impl From<Option<&str>> for Section {
+    fn from(o: Option<&str>) -> Self {
+        match o {
+            Some(x) => x.parse().unwrap(),
+            None => Section::Dump,
+        }
+    }
+}
