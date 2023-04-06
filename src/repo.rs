@@ -1,10 +1,11 @@
 use crate::{Error, Result, Section};
 use core::fmt;
 use std::collections::HashMap;
+use std::fs::File;
 use std::str;
 use std::{fs, path::Path};
 
-trait Repo {
+pub trait Repo {
     fn create(&self, task: &str, section: Section) -> Result<()>;
     fn list(&self, section: Section) -> Result<Vec<String>>;
     fn delete(&self, task: &str, section: Section) -> Result<()>;
@@ -62,6 +63,7 @@ impl str::FromStr for LineContent {
 
 impl<T: AsRef<Path>> FileBackedRepo<T> {
     fn new(path: T) -> Result<FileBackedRepo<T>> {
+        File::options().create(true).append(true).open(&path)?;
         Ok(FileBackedRepo { file: path })
     }
 
@@ -199,20 +201,27 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
 mod tests {
     use super::*;
     use std::error::Error;
-    use std::fs::File;
     use std::path::PathBuf;
+    use std::result::Result;
     use std::vec;
-    use std::{io::Write, result::Result};
     use tempdir::TempDir;
+
+    #[test]
+    fn new_creates_file_if_not_exists() -> Result<(), Box<dyn Error>> {
+        let tmp_dir = tempdir::TempDir::new("example")?;
+        let file_path = tmp_dir.path().join("testing");
+        FileBackedRepo::new(&file_path)?;
+        assert!(file_path.exists());
+        Ok(())
+    }
 
     // the returned temp_dir is only returned to keep the reference and not destroy it
     // before the function tests are done.
     fn setup(content: &str) -> Result<(FileBackedRepo<PathBuf>, TempDir), Box<dyn Error>> {
         let tmp_dir = tempdir::TempDir::new("example")?;
         let file_path = tmp_dir.path().join("testing");
-        let mut tmp_file = File::create(&file_path)?;
-        write!(tmp_file, "{content}")?;
         let file_repo = FileBackedRepo::new(file_path)?;
+        fs::write(&file_repo.file, content)?;
         Ok((file_repo, tmp_dir))
     }
 
