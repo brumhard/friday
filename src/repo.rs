@@ -2,6 +2,7 @@ use crate::{Error, Result, Section};
 use core::fmt;
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::Write;
 use std::str;
 use std::{fs, path::Path};
 
@@ -67,7 +68,10 @@ impl str::FromStr for LineContent {
 
 impl<T: AsRef<Path>> FileBackedRepo<T> {
     fn new(path: T) -> Result<FileBackedRepo<T>> {
-        File::options().create(true).append(true).open(&path)?;
+        let file = File::options().create(true).append(true).open(&path)?;
+        if file.metadata()?.len() == 0 {
+            write!(&file, "# It's friday my dudes\n")?;
+        }
         Ok(FileBackedRepo { file: path })
     }
 
@@ -211,11 +215,12 @@ mod tests {
     use tempdir::TempDir;
 
     #[test]
-    fn new_creates_file_if_not_exists() -> Result<(), Box<dyn Error>> {
+    fn new_creates_file_with_header_if_not_exists() -> Result<(), Box<dyn Error>> {
         let tmp_dir = tempdir::TempDir::new("example")?;
         let file_path = tmp_dir.path().join("testing");
         FileBackedRepo::new(&file_path)?;
         assert!(file_path.exists());
+        assert!(fs::read_to_string(file_path)?.contains("friday"));
         Ok(())
     }
 
@@ -224,8 +229,8 @@ mod tests {
     fn setup(content: &str) -> Result<(FileBackedRepo<PathBuf>, TempDir), Box<dyn Error>> {
         let tmp_dir = tempdir::TempDir::new("example")?;
         let file_path = tmp_dir.path().join("testing");
+        fs::write(&file_path, content)?;
         let file_repo = FileBackedRepo::new(file_path)?;
-        fs::write(&file_repo.file, content)?;
         Ok((file_repo, tmp_dir))
     }
 
