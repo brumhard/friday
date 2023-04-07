@@ -1,7 +1,5 @@
 use colored::Colorize;
-use friday_rust::{
-    Action, Config, DefaultManager, Error, FileBackedRepo, Manager, Result, Section,
-};
+use friday::{Action, Config, DefaultManager, Error, FileBackedRepo, Manager, Result, Section};
 use std::{
     collections::HashMap,
     env,
