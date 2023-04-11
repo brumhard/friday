@@ -48,32 +48,32 @@ struct Request {
 type Func = Box<dyn FnOnce() + Send + 'static>;
 
 struct ThreadPool {
-    handles: Vec<thread::JoinHandle<()>>,
+    threads: Vec<thread::JoinHandle<()>>,
     sender: mpsc::Sender<Func>,
 }
 
 impl ThreadPool {
-    fn new(size: u8) -> ThreadPool {
+    fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
 
         let (sender, receiver) = mpsc::channel();
-        let shared_receiver = Arc::new(Mutex::new(receiver));
+        let receiver = Arc::new(Mutex::new(receiver));
 
-        let mut handles = Vec::new();
-        for _ in 0..size {
-            let r = Arc::clone(&shared_receiver);
+        let mut threads = Vec::with_capacity(size);
+        for i in 0..size {
+            let r = Arc::clone(&receiver);
             let handle = thread::spawn(move || loop {
                 let f: Func = r.lock().unwrap().recv().unwrap();
-                log::info!("handling func in thread");
+                log::info!("handling func in worker {i}");
                 f()
             });
-            handles.push(handle);
+            threads.push(handle);
         }
 
-        ThreadPool { handles, sender }
+        ThreadPool { threads, sender }
     }
 
-    fn execute<T: FnOnce() + Send + 'static>(&self, f: T) {
+    fn execute<F: FnOnce() + Send + 'static>(&self, f: F) {
         self.sender.send(Box::new(f)).unwrap()
     }
 }
