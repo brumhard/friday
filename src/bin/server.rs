@@ -48,33 +48,61 @@ struct Request {
 type Func = Box<dyn FnOnce() + Send + 'static>;
 
 struct ThreadPool {
-    threads: Vec<thread::JoinHandle<()>>,
-    sender: mpsc::Sender<Func>,
+    // using options here to wrap stuff that needs to be moved
+    // in drop.
+    // See https://doc.rust-lang.org/stable/book/ch20-03-graceful-shutdown-and-cleanup.html.
+    threads: Vec<Option<thread::JoinHandle<()>>>,
+    sender: Option<mpsc::Sender<Func>>,
 }
 
 impl ThreadPool {
     fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
 
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver): (mpsc::Sender<Func>, mpsc::Receiver<Func>) = mpsc::channel();
         let receiver = Arc::new(Mutex::new(receiver));
 
         let mut threads = Vec::with_capacity(size);
         for i in 0..size {
             let r = Arc::clone(&receiver);
             let handle = thread::spawn(move || loop {
-                let f: Func = r.lock().unwrap().recv().unwrap();
-                log::info!("handling func in worker {i}");
-                f()
+                let f = r.lock().unwrap().recv();
+                match f {
+                    Ok(f) => {
+                        log::info!("handling func in worker {i}");
+                        f();
+                    }
+                    Err(_) => {
+                        log::warn!("received error in worker {i}, shutting down");
+                        break;
+                    }
+                }
             });
-            threads.push(handle);
+            threads.push(Some(handle));
         }
 
-        ThreadPool { threads, sender }
+        ThreadPool {
+            threads,
+            sender: Some(sender),
+        }
     }
 
     fn execute<F: FnOnce() + Send + 'static>(&self, f: F) {
-        self.sender.send(Box::new(f)).unwrap()
+        self.sender.as_ref().unwrap().send(Box::new(f)).unwrap()
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+
+        for (i, thread) in self.threads.iter_mut().enumerate() {
+            log::debug!("Shutting down worker {i}");
+
+            if let Some(thread) = thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }
 
