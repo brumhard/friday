@@ -1,9 +1,8 @@
 use friday::{Error, Result};
 use std::{
-    borrow::Borrow,
     collections::HashMap,
     env,
-    fmt::{self, format},
+    fmt::{self},
     io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
     process,
@@ -35,7 +34,14 @@ fn run(port: u16) -> Result<()> {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let r = parse_request(&mut stream).unwrap();
+    let r = match parse_request(&mut stream) {
+        Ok(r) => r,
+        Err(e) => {
+            write_http(stream, 400, format!("invalid request: {e}"));
+            log::error!("invalid request: {e}");
+            return;
+        }
+    };
     println!("method: {}, path: {}", r.method, r.path);
     println!("headers: {:#?}", r.headers);
     println!("body: {:#?}", r.body);
@@ -74,6 +80,25 @@ struct Request {
     path: String,
     headers: HashMap<String, String>,
     body: Option<String>,
+}
+
+fn write_http(mut writer: impl Write, status: u16, body: String) {
+    let content_length = body.len();
+    let reason = match status {
+        500 => "Internal Server Error",
+        400 => "Bad Request",
+        _ => "OK",
+    };
+
+    write!(
+        writer,
+        "\
+HTTP/1.1 {status} {reason}
+Content-Length: {content_length}
+
+{body}"
+    )
+    .unwrap_or_else(|e| log::error!("failed to write response: {e}"))
 }
 
 fn parse_request(reader: impl Read) -> Result<Request> {
