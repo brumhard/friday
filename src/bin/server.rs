@@ -7,51 +7,9 @@ use std::{
     net::{TcpListener, TcpStream},
     process,
     str::{self, FromStr},
+    sync::{mpsc, Arc, Mutex},
+    thread,
 };
-
-fn main() {
-    // see https://github.com/rust-lang/log
-    env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
-
-    let port: u16 = env::var("PORT").unwrap_or_default().parse().unwrap_or(7878);
-
-    run(port).unwrap_or_else(|e| {
-        eprint!("error during run: {e}");
-        process::exit(1)
-    })
-}
-
-fn run(port: u16) -> Result<()> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))?;
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(s) => handle_connection(s),
-            Err(e) => log::error!("error in TCP connection: {e}"),
-        }
-    }
-    Ok(())
-}
-
-fn handle_connection(mut stream: TcpStream) {
-    let r = match parse_request(&mut stream) {
-        Ok(r) => r,
-        Err(e) => {
-            write_http(stream, 400, format!("invalid request: {e}"));
-            log::error!("invalid request: {e}");
-            return;
-        }
-    };
-    handle_request(r, stream);
-}
-
-fn handle_request(r: Request, rw: impl Write) {
-    if r.method != Method::GET {
-        write_http(rw, 501, "unimplemented method".to_string());
-        return;
-    }
-    write_http(rw, 200, format!("got {} request to {}", r.method, r.path))
-}
 
 #[derive(PartialEq, Eq, Debug)]
 enum Method {
@@ -85,6 +43,84 @@ struct Request {
     path: String,
     headers: HashMap<String, String>,
     body: Option<String>,
+}
+
+type Func = Box<dyn FnOnce() + Send + 'static>;
+
+struct ThreadPool {
+    handles: Vec<thread::JoinHandle<()>>,
+    sender: mpsc::Sender<Func>,
+}
+
+impl ThreadPool {
+    fn new(size: u8) -> ThreadPool {
+        assert!(size > 0);
+
+        let (sender, receiver) = mpsc::channel();
+        let shared_receiver = Arc::new(Mutex::new(receiver));
+
+        let mut handles = Vec::new();
+        for _ in 0..size {
+            let r = Arc::clone(&shared_receiver);
+            let handle = thread::spawn(move || loop {
+                let f: Func = r.lock().unwrap().recv().unwrap();
+                log::info!("handling func in thread");
+                f()
+            });
+            handles.push(handle);
+        }
+
+        ThreadPool { handles, sender }
+    }
+
+    fn execute<T: FnOnce() + Send + 'static>(&self, f: T) {
+        self.sender.send(Box::new(f)).unwrap()
+    }
+}
+
+fn main() {
+    // see https://github.com/rust-lang/log
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
+
+    let port: u16 = env::var("PORT").unwrap_or_default().parse().unwrap_or(7878);
+
+    run(port).unwrap_or_else(|e| {
+        eprint!("error during run: {e}");
+        process::exit(1)
+    })
+}
+
+fn run(port: u16) -> Result<()> {
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))?;
+    let thread_pool = ThreadPool::new(4);
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(s) => thread_pool.execute(|| handle_connection(s)),
+            Err(e) => log::error!("error in TCP connection: {e}"),
+        }
+    }
+    Ok(())
+}
+
+fn handle_connection(mut stream: TcpStream) {
+    let r = match parse_request(&mut stream) {
+        Ok(r) => r,
+        Err(e) => {
+            write_http(stream, 400, format!("invalid request: {e}"));
+            log::error!("invalid request: {e}");
+            return;
+        }
+    };
+    handle_request(r, stream);
+}
+
+fn handle_request(r: Request, rw: impl Write) {
+    if r.method != Method::GET {
+        write_http(rw, 501, "unimplemented method".to_string());
+        return;
+    }
+    write_http(rw, 200, format!("got {} request to {}", r.method, r.path))
 }
 
 fn write_http(mut writer: impl Write, status: u16, body: String) {
