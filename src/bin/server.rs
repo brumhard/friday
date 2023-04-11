@@ -35,22 +35,10 @@ fn run(port: u16) -> Result<()> {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let mut reader = BufReader::new(&mut stream);
-    let mut lines = reader.by_ref().lines().map(|r| r.unwrap());
-    let (method, path, _) = parse_first_line(lines.next().unwrap()).unwrap();
-    let headers: HashMap<String, String> = lines
-        .take_while(|line| !line.is_empty())
-        .map(|line| {
-            let (key, value) = line.split_once(':').unwrap_or_default();
-            (key.trim().to_string(), value.trim().to_string())
-        })
-        .collect();
-
-    let body = read_body(reader, &headers);
-
-    println!("method: {method}, path: {path}");
-    println!("headers: {:#?}", headers);
-    println!("body: {:#?}", body);
+    let r = parse_request(&mut stream).unwrap();
+    println!("method: {}, path: {}", r.method, r.path);
+    println!("headers: {:#?}", r.headers);
+    println!("body: {:#?}", r.body);
     println!("handling connection")
 }
 
@@ -81,6 +69,46 @@ impl fmt::Display for Method {
     }
 }
 
+struct Request {
+    method: Method,
+    path: String,
+    headers: HashMap<String, String>,
+    body: Option<String>,
+}
+
+fn parse_request(reader: impl Read) -> Result<Request> {
+    let mut reader = BufReader::new(reader);
+    let mut lines = reader.by_ref().lines();
+    let first_line = match lines.next() {
+        Some(Ok(line)) => line,
+        // error for empty will be handled in parse_first_line
+        None => "".to_string(),
+        Some(Err(e)) => {
+            return Err(e.into());
+        }
+    };
+    let (method, path, _) = parse_first_line(first_line)?;
+
+    let mut headers: HashMap<String, String> = HashMap::new();
+    for line_result in lines {
+        let line = line_result?;
+        if line.is_empty() {
+            break;
+        }
+        let (key, value) = line.split_once(':').unwrap_or_default();
+        headers.insert(key.trim().to_string(), value.trim().to_string());
+    }
+
+    let body = read_body(reader, &headers)?;
+
+    Ok(Request {
+        method,
+        path,
+        headers,
+        body,
+    })
+}
+
 fn parse_first_line(s: String) -> Result<(Method, String, String)> {
     let parts: Vec<&str> = s.splitn(3, ' ').collect();
     if parts.len() != 3 {
@@ -105,9 +133,9 @@ fn read_body(mut reader: impl Read, headers: &HashMap<String, String>) -> Result
         ));
     }
     if let Some(size_string) = headers.get("Content-Length") {
-        let size: usize = size_string.parse().unwrap();
+        let size: usize = size_string.parse().unwrap_or_default();
         body_buffer = vec![0; size];
-        reader.read_exact(&mut body_buffer).unwrap();
+        reader.read_exact(&mut body_buffer)?;
         body = Some(String::from_utf8_lossy(&body_buffer).into());
     }
     Ok(body)
