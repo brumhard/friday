@@ -42,10 +42,15 @@ fn handle_connection(mut stream: TcpStream) {
             return;
         }
     };
-    println!("method: {}, path: {}", r.method, r.path);
-    println!("headers: {:#?}", r.headers);
-    println!("body: {:#?}", r.body);
-    println!("handling connection")
+    handle_request(r, stream);
+}
+
+fn handle_request(r: Request, rw: impl Write) {
+    if r.method != Method::GET {
+        write_http(rw, 501, "unimplemented method".to_string());
+        return;
+    }
+    write_http(rw, 200, format!("got {} request to {}", r.method, r.path))
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -86,6 +91,7 @@ fn write_http(mut writer: impl Write, status: u16, body: String) {
     let content_length = body.len();
     let reason = match status {
         500 => "Internal Server Error",
+        501 => "Not Implemented",
         400 => "Bad Request",
         _ => "OK",
     };
