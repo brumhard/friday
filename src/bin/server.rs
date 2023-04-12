@@ -9,9 +9,9 @@ fn main() {
     // server.register_handler(String::from("test"));
     server.register_func("/sleep", |_r, rw| {
         thread::sleep(Duration::from_secs(5));
-        write(rw, 200, "done".to_string())
+        write(rw, 200, "done")
     });
-    server.register_func("/", |_r, rw| write(rw, 200, "whoop".to_string()));
+    server.register_func("/", |_r, rw| write(rw, 200, "whoop"));
 
     server.listen_and_serve("0.0.0.0:7878").unwrap();
 }

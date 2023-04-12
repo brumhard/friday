@@ -58,7 +58,7 @@ impl Server<'_, TcpStream> {
         let r = match parse_request(&stream) {
             Ok(r) => r,
             Err(e) => {
-                write(stream, 400, format!("invalid request: {e}"));
+                write(stream, 400, &format!("invalid request: {e}"));
                 log::error!("invalid request: {e}");
                 return;
             }
@@ -133,7 +133,7 @@ pub struct Request {
     pub body: Option<String>,
 }
 
-pub fn write(mut writer: impl Write, status: u16, body: String) {
+pub fn write(mut writer: impl Write, status: u16, body: &str) {
     let content_length = body.len();
     let reason = match status {
         500 => "Internal Server Error",
