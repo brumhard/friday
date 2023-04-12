@@ -4,6 +4,7 @@ pub use manager::*;
 pub use repo::*;
 pub use section::*;
 
+pub mod asynchttp;
 mod config;
 mod error;
 pub mod http;

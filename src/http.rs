@@ -2,7 +2,7 @@ use crate::{Error, Result};
 use rayon::prelude::*;
 use std::{
     collections::HashMap,
-    fmt::{self},
+    fmt,
     io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream, ToSocketAddrs},
     str::{self, FromStr},
@@ -33,13 +33,20 @@ pub struct Server<'handler, T: Write> {
 impl Server<'_, TcpStream> {
     pub fn listen_and_serve<A: ToSocketAddrs>(&self, addr: A) -> Result<()> {
         let listener = TcpListener::bind(addr)?;
+        // 1. implementation with custom threadpool
         // this was using the threadpool from https://doc.rust-lang.org/stable/book/ch20-02-multithreaded.html
         // before, but the thread::spawn only supports static contexts which makes it pretty hard to use
         // it with self.
         // see https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282.
-
+        //
+        // 2. implementation with rayon
         // using rayon par_bridge will put all streams on separate threads on it's own.
         // Ofc if all threads are blocked this doesn't allow more connections.
+
+        //
+        // 3. implementation with tokio
+        // To not block any threads on io tokio is a nice replacement: https://tokio.rs/tokio/tutorial.
+        // This is not implemented here but in the asynchttp module.
         listener
             .incoming()
             .par_bridge()
