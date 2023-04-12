@@ -1,10 +1,12 @@
 use crate::{Error, Result};
+use rayon::prelude::*;
 use std::{
     collections::HashMap,
     fmt::{self},
     io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream, ToSocketAddrs},
     str::{self, FromStr},
+    thread,
 };
 
 struct FuncWrapper<'func, T: Write> {
@@ -36,12 +38,19 @@ impl Server<'_, TcpStream> {
         // it with self.
         // see https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282.
 
-        for stream in listener.incoming() {
-            match stream {
-                Ok(s) => self.handle_connection(s),
+        // using rayon par_bridge will put all streams on separate threads on it's own.
+        // Ofc if all threads are blocked this doesn't allow more connections.
+        listener
+            .incoming()
+            .par_bridge()
+            .for_each(|stream| match stream {
+                Ok(stream) => {
+                    log::debug!("Thread ID: {:?} - Handling request", thread::current().id(),);
+                    self.handle_connection(stream);
+                }
                 Err(e) => log::error!("error in TCP connection: {e}"),
-            }
-        }
+            });
+
         Ok(())
     }
 
@@ -72,13 +81,13 @@ impl<'handler, T: Write + 'handler> Server<'handler, T> {
 
     pub fn register_handler<H: Handler<T> + Send + Sync + 'handler>(
         &mut self,
-        path: String,
+        path: &str,
         handler: H,
     ) {
-        self.handlers.push((path, Box::new(handler)))
+        self.handlers.push((path.to_owned(), Box::new(handler)))
     }
 
-    pub fn register_func<F>(&mut self, path: String, f: F)
+    pub fn register_func<F>(&mut self, path: &str, f: F)
     where
         F: Fn(Request, T) + Send + Sync + 'handler,
     {
