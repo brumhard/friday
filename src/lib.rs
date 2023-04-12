@@ -10,7 +10,6 @@ pub mod http;
 mod manager;
 mod repo;
 mod section;
-mod threadpool;
 
 // this pattern can also be found in ripgrep and anyhow
 pub type Result<T> = std::result::Result<T, Error>;

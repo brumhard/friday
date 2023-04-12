@@ -1,93 +1,92 @@
-use crate::{threadpool::ThreadPool, Error, Result};
+use crate::{Error, Result};
 use std::{
     collections::HashMap,
     fmt::{self},
     io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream, ToSocketAddrs},
     str::{self, FromStr},
-    sync::Arc,
 };
 
-struct FuncWrapper<'a, T: Write> {
-    f: Box<dyn Fn(Request, T) + Send + Sync + 'a>,
+struct FuncWrapper<'func, T: Write> {
+    f: Box<dyn Fn(Request, T) + Send + Sync + 'func>,
 }
 
-impl<'a, T: Write> FuncWrapper<'a, T> {
-    fn new<F: Fn(Request, T) + Send + Sync + 'a>(f: F) -> FuncWrapper<'a, T> {
+impl<'func, T: Write> FuncWrapper<'func, T> {
+    fn new<F: Fn(Request, T) + Send + Sync + 'func>(f: F) -> FuncWrapper<'func, T> {
         FuncWrapper { f: Box::new(f) }
     }
 }
 
-impl<'a, T: Write> Handler<T> for FuncWrapper<'a, T> {
+impl<T: Write> Handler<T> for FuncWrapper<'_, T> {
     fn handle(&self, r: Request, rw: T) {
         let f = &self.f;
         f(r, rw)
     }
 }
 
-pub struct Server<'a, T: Write> {
-    handlers: Arc<Vec<(String, Box<dyn Handler<T> + Send + Sync + 'a>)>>,
+pub struct Server<'handler, T: Write> {
+    handlers: Vec<(String, Box<dyn Handler<T> + Send + Sync + 'handler>)>,
 }
 
-impl<'a> Server<'a, TcpStream> {
-    pub fn listen_and_serve<A: ToSocketAddrs>(self, addr: A) -> Result<()> {
+impl Server<'_, TcpStream> {
+    pub fn listen_and_serve<A: ToSocketAddrs>(&self, addr: A) -> Result<()> {
         let listener = TcpListener::bind(addr)?;
-        let thread_pool = ThreadPool::new(4);
+        // this was using the threadpool from https://doc.rust-lang.org/stable/book/ch20-02-multithreaded.html
+        // before, but the thread::spawn only supports static contexts which makes it pretty hard to use
+        // it with self.
+        // see https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282.
 
         for stream in listener.incoming() {
             match stream {
-                Ok(s) => thread_pool.execute(move || handle_connection(&self.handlers, s)),
+                Ok(s) => self.handle_connection(s),
                 Err(e) => log::error!("error in TCP connection: {e}"),
             }
         }
         Ok(())
     }
-}
 
-fn handle_connection(
-    handlers: &Vec<(String, Box<dyn Handler<TcpStream> + Send + Sync>)>,
-    stream: TcpStream,
-) {
-    let r = match parse_request(&stream) {
-        Ok(r) => r,
-        Err(e) => {
-            write(stream, 400, format!("invalid request: {e}"));
-            log::error!("invalid request: {e}");
-            return;
-        }
-    };
-    for (path, handler) in handlers {
-        if r.path.contains(path) {
-            handler.handle(r, stream);
-            break;
+    fn handle_connection(&self, stream: TcpStream) {
+        let r = match parse_request(&stream) {
+            Ok(r) => r,
+            Err(e) => {
+                write(stream, 400, format!("invalid request: {e}"));
+                log::error!("invalid request: {e}");
+                return;
+            }
+        };
+        for (path, handler) in &self.handlers {
+            if r.path.contains(path) {
+                handler.handle(r, stream);
+                break;
+            }
         }
     }
 }
 
-impl<'a, T: Write> Server<'a, T> {
-    pub fn new() -> Server<'a, T> {
+impl<'handler, T: Write + 'handler> Server<'handler, T> {
+    pub fn new() -> Server<'handler, T> {
         Server {
-            handlers: Arc::new(Vec::new()),
+            handlers: Vec::new(),
         }
     }
 
-    pub fn register_handler(
-        &'a mut self,
+    pub fn register_handler<H: Handler<T> + Send + Sync + 'handler>(
+        &mut self,
         path: String,
-        handler: Box<dyn Handler<T> + Send + Sync + 'a>,
+        handler: H,
     ) {
-        self.handlers.push((path, handler))
+        self.handlers.push((path, Box::new(handler)))
     }
 
-    pub fn register_func<F>(&'a mut self, path: String, f: F)
+    pub fn register_func<F>(&mut self, path: String, f: F)
     where
-        F: Fn(Request, T) + Send + Sync + 'a,
+        F: Fn(Request, T) + Send + Sync + 'handler,
     {
-        self.register_handler(path, Box::new(FuncWrapper::new(f)))
+        self.register_handler(path, FuncWrapper::new(f))
     }
 }
 
-trait Handler<T: Write> {
+pub trait Handler<T: Write> {
     fn handle(&self, r: Request, rw: T);
 }
 
