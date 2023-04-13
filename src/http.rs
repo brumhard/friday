@@ -3,10 +3,9 @@ use crate::{Error, Result};
 use rayon::prelude::*;
 use std::{
     collections::HashMap,
-    fmt,
     io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream, ToSocketAddrs},
-    str::{self, FromStr},
+    str::{self},
     thread,
 };
 
@@ -190,16 +189,4 @@ fn read_body(mut reader: impl Read, headers: &HashMap<String, String>) -> Result
         body = Some(String::from_utf8_lossy(&body_buffer).into());
     }
     Ok(body)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_first_line_works() {
-        let (method, path, _) = parse_first_line("GET / s".to_string()).unwrap();
-        assert_eq!(method, Method::GET);
-        assert_eq!(path, "/".to_string())
-    }
 }

@@ -1,17 +1,22 @@
-use friday::http::{write, Server};
-use std::{net::TcpStream, thread, time::Duration};
+use async_trait::async_trait;
+use friday::asynchttp::{write, Handler, Server};
+use tokio::{net::TcpStream};
 
-fn main() {
+struct SomeHandler;
+
+#[async_trait]
+impl Handler<TcpStream> for SomeHandler {
+    async fn handle(&self, _: friday::http::Request, rw: TcpStream) {
+        write(rw, 200, "done").await;
+    }
+}
+
+#[tokio::main]
+async fn main() {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
 
-    let mut server: Server<TcpStream> = Server::new();
+    let handler = SomeHandler {};
+    let server = Server::new(handler);
 
-    // server.register_handler(String::from("test"));
-    server.register_func("/sleep", |_r, rw| {
-        thread::sleep(Duration::from_secs(5));
-        write(rw, 200, "done")
-    });
-    server.register_func("/", |_r, rw| write(rw, 200, "whoop"));
-
-    server.listen_and_serve("0.0.0.0:7878").unwrap();
+    server.listen_and_serve("0.0.0.0:7878").await.unwrap()
 }
