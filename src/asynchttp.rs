@@ -14,6 +14,61 @@ use crate::{
     Error,
 };
 
+// struct FuncWrapper<T: AsyncWriteExt + Unpin> {
+//     f: Box<dyn Async(Request, T) + Send + Sync>,
+// }
+
+// impl<T: AsyncWriteExt + Unpin> FuncWrapper<T> {
+//     fn new<F: Fn(Request, T) + Send + Sync>(f: F) -> FuncWrapper<T> {
+//         FuncWrapper { f: Box::new(f) }
+//     }
+// }
+
+// #[async_trait]
+// impl<T: AsyncWriteExt + Unpin> Handler<T> for FuncWrapper<T> {
+//     async fn handle(&self, r: Request, rw: T) {
+//         let f = &self.f;
+//         f(r, rw)
+//     }
+// }
+
+pub struct Router<T: AsyncWriteExt + Unpin> {
+    handlers: Vec<(String, Box<dyn Handler<T> + Send + Sync>)>,
+}
+
+impl<T: AsyncWriteExt + Unpin> Router<T> {
+    pub fn new() -> Router<T> {
+        Router { handlers: vec![] }
+    }
+    pub fn register_handler<H: Handler<T> + Send + Sync + 'static>(
+        &mut self,
+        path: &str,
+        handler: H,
+    ) {
+        self.handlers.push((path.to_owned(), Box::new(handler)))
+    }
+
+    // pub fn register_func<F>(&mut self, path: &str, f: F)
+    // where
+    //     F: Fn(Request, T) + Send + Sync + 'static,
+    // {
+    //     self.register_handler(path, FuncWrapper::new(f))
+    // }
+}
+
+#[async_trait]
+impl<T: AsyncWriteExt + Unpin + Send> Handler<T> for Router<T> {
+    async fn handle(&self, r: Request, rw: T) {
+        for (path, handler) in &self.handlers {
+            if r.path.contains(path) {
+                handler.handle(r, rw).await;
+                return;
+            }
+        }
+        write(rw, 404, "not found").await;
+    }
+}
+
 pub struct Server<H: Handler<TcpStream> + Send + Sync> {
     handler: Arc<H>,
 }
@@ -64,6 +119,7 @@ pub async fn write(mut writer: impl AsyncWriteExt + Unpin, status: u16, body: &s
         500 => "Internal Server Error",
         501 => "Not Implemented",
         400 => "Bad Request",
+        404 => "Not Found",
         _ => "OK",
     };
 
