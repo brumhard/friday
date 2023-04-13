@@ -1,11 +1,49 @@
 use crate::{Error, Repo, Result, Section};
-use std::{collections::HashMap, str};
+use std::{collections::HashMap, str, sync::Arc};
 
 pub trait Manager {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()>;
     fn list(&self, section: Option<&str>) -> Result<Vec<String>>;
     fn sections(&self) -> Result<HashMap<Section, Vec<String>>>;
     fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()>;
+}
+
+pub struct ManagerWrapper<T: Manager> {
+    inner: Arc<T>,
+}
+
+impl<T: Manager> ManagerWrapper<T> {
+    pub fn new(mngr: T) -> Self {
+        Self {
+            inner: Arc::new(mngr),
+        }
+    }
+}
+
+impl<T: Manager> Clone for ManagerWrapper<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
+impl<T: Manager> Manager for ManagerWrapper<T> {
+    fn add(&self, task: &str, section: Option<&str>) -> Result<()> {
+        self.inner.add(task, section)
+    }
+
+    fn list(&self, section: Option<&str>) -> Result<Vec<String>> {
+        self.inner.list(section)
+    }
+
+    fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
+        self.inner.sections()
+    }
+
+    fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()> {
+        self.inner.rm(pattern, section)
+    }
 }
 
 pub struct DefaultManager<T: Repo> {
