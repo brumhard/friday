@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 
+use futures::Future;
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream, ToSocketAddrs},
@@ -13,24 +14,6 @@ use crate::{
     http::{Method, Request},
     Error,
 };
-
-// struct FuncWrapper<T: AsyncWriteExt + Unpin> {
-//     f: Box<dyn Async(Request, T) + Send + Sync>,
-// }
-
-// impl<T: AsyncWriteExt + Unpin> FuncWrapper<T> {
-//     fn new<F: Fn(Request, T) + Send + Sync>(f: F) -> FuncWrapper<T> {
-//         FuncWrapper { f: Box::new(f) }
-//     }
-// }
-
-// #[async_trait]
-// impl<T: AsyncWriteExt + Unpin> Handler<T> for FuncWrapper<T> {
-//     async fn handle(&self, r: Request, rw: T) {
-//         let f = &self.f;
-//         f(r, rw)
-//     }
-// }
 
 pub struct Router<T: AsyncWriteExt + Unpin> {
     handlers: Vec<(String, Box<dyn Handler<T> + Send + Sync>)>,
@@ -47,13 +30,6 @@ impl<T: AsyncWriteExt + Unpin> Router<T> {
     ) {
         self.handlers.push((path.to_owned(), Box::new(handler)))
     }
-
-    // pub fn register_func<F>(&mut self, path: &str, f: F)
-    // where
-    //     F: Fn(Request, T) + Send + Sync + 'static,
-    // {
-    //     self.register_handler(path, FuncWrapper::new(f))
-    // }
 }
 
 #[async_trait]
@@ -109,8 +85,19 @@ impl<H: Handler<TcpStream> + Send + Sync + 'static> Server<H> {
 }
 
 #[async_trait]
-pub trait Handler<T: AsyncWriteExt + Unpin> {
+pub trait Handler<T: AsyncWriteExt + Unpin = TcpStream> {
     async fn handle(&self, r: Request, rw: T);
+}
+
+#[async_trait]
+impl<F, Fut> Handler for F
+where
+    Fut: Future<Output = ()> + Send + Sync,
+    F: Fn(Request, TcpStream) -> Fut + Send + Sync,
+{
+    async fn handle(&self, r: Request, rw: TcpStream) {
+        self(r, rw).await
+    }
 }
 
 pub async fn write(mut writer: impl AsyncWriteExt + Unpin, status: u16, body: &str) {
