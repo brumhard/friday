@@ -7,6 +7,7 @@ pub use section::*;
 pub mod asynchttp;
 mod config;
 mod error;
+mod http_types;
 mod manager;
 mod repo;
 mod section;
