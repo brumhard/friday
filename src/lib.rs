@@ -7,10 +7,12 @@ pub use section::*;
 pub mod asynchttp;
 mod config;
 mod error;
-pub mod http;
 mod manager;
 mod repo;
 mod section;
+
+#[deprecated = "use asynchttp instead."]
+pub mod http;
 
 // this pattern can also be found in ripgrep and anyhow
 pub type Result<T> = std::result::Result<T, Error>;
