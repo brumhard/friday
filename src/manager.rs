@@ -1,5 +1,9 @@
 use crate::{Error, Repo, Result, Section};
-use std::{collections::HashMap, str, sync::Arc};
+use std::{
+    collections::HashMap,
+    str,
+    sync::{Arc, RwLock},
+};
 
 pub trait Manager {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()>;
@@ -8,41 +12,21 @@ pub trait Manager {
     fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()>;
 }
 
-pub struct ManagerWrapper<T: Manager> {
-    inner: Arc<T>,
-}
-
-impl<T: Manager> ManagerWrapper<T> {
-    pub fn new(mngr: T) -> Self {
-        Self {
-            inner: Arc::new(mngr),
-        }
-    }
-}
-
-impl<T: Manager> Clone for ManagerWrapper<T> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-        }
-    }
-}
-
-impl<T: Manager> Manager for ManagerWrapper<T> {
+impl<T: Manager> Manager for Arc<RwLock<T>> {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()> {
-        self.inner.add(task, section)
+        self.write().unwrap().add(task, section)
     }
 
     fn list(&self, section: Option<&str>) -> Result<Vec<String>> {
-        self.inner.list(section)
+        self.read().unwrap().list(section)
     }
 
     fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
-        self.inner.sections()
+        self.read().unwrap().sections()
     }
 
     fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()> {
-        self.inner.rm(pattern, section)
+        self.write().unwrap().rm(pattern, section)
     }
 }
 
