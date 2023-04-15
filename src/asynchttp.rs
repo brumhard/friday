@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use futures::Future;
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
-    net::{TcpListener, TcpStream, ToSocketAddrs},
+    net::{TcpListener, ToSocketAddrs},
 };
 
 pub use crate::http_types::*;
@@ -15,41 +15,36 @@ use crate::{
     Error,
 };
 
-pub struct Router<T: AsyncWriteExt + Unpin> {
-    handlers: Vec<(String, Box<dyn Handler<T> + Send + Sync>)>,
+pub struct Router {
+    handlers: Vec<(String, Box<dyn Handler + Send + Sync>)>,
 }
 
-impl<T: AsyncWriteExt + Unpin> Router<T> {
-    pub fn new() -> Router<T> {
+impl Router {
+    pub fn new() -> Router {
         Router { handlers: vec![] }
     }
-    pub fn register_handler<H: Handler<T> + Send + Sync + 'static>(
-        &mut self,
-        path: &str,
-        handler: H,
-    ) {
+    pub fn register_handler<H: Handler + Send + Sync + 'static>(&mut self, path: &str, handler: H) {
         self.handlers.push((path.to_owned(), Box::new(handler)))
     }
 }
 
 #[async_trait]
-impl<T: AsyncWriteExt + Unpin + Send> Handler<T> for Router<T> {
-    async fn handle(&self, r: Request, rw: T) {
+impl Handler for Router {
+    async fn handle(&self, r: Request) -> Response {
         for (path, handler) in &self.handlers {
             if r.path.contains(path) {
-                handler.handle(r, rw).await;
-                return;
+                return handler.handle(r).await;
             }
         }
-        write(rw, 404, "not found").await;
+        Response::new(404, &"not found".to_string())
     }
 }
 
-pub struct Server<H: Handler<TcpStream> + Send + Sync> {
+pub struct Server<H: Handler> {
     handler: Arc<H>,
 }
 
-impl<H: Handler<TcpStream> + Send + Sync + 'static> Server<H> {
+impl<H: Handler + Send + Sync + 'static> Server<H> {
     pub fn new(handler: H) -> Server<H> {
         Server {
             handler: Arc::new(handler),
@@ -77,7 +72,8 @@ impl<H: Handler<TcpStream> + Send + Sync + 'static> Server<H> {
                         }
                     };
                     log::debug!("handling request");
-                    handler.handle(r, stream).await
+                    let resp = handler.handle(r).await;
+                    write(stream, resp.status, &resp.body.unwrap()).await
                 }
             });
         }
@@ -85,18 +81,18 @@ impl<H: Handler<TcpStream> + Send + Sync + 'static> Server<H> {
 }
 
 #[async_trait]
-pub trait Handler<T: AsyncWriteExt + Unpin = TcpStream> {
-    async fn handle(&self, r: Request, rw: T);
+pub trait Handler {
+    async fn handle(&self, r: Request) -> Response;
 }
 
 #[async_trait]
 impl<F, Fut> Handler for F
 where
-    Fut: Future<Output = ()> + Send + Sync,
-    F: Fn(Request, TcpStream) -> Fut + Send + Sync,
+    Fut: Future<Output = Response> + Send + Sync,
+    F: Fn(Request) -> Fut + Send + Sync,
 {
-    async fn handle(&self, r: Request, rw: TcpStream) {
-        self(r, rw).await
+    async fn handle(&self, r: Request) -> Response {
+        self(r).await
     }
 }
 

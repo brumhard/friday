@@ -3,8 +3,7 @@
 ## TODO
 
 - server implementation as other transport layer:
-  - move to seperate crate for http?
-  - implement the rest API
-  - also use some preexisting web framework
+  - add tracing spans to server and replace logs with tracing <https://docs.rs/tracing/latest/tracing/>
+- support multiple reponse formats and add appropriate response headers
 - rustlings
-- https://dev.to/deciduously/oops-i-did-it-againi-made-a-rust-web-api-and-it-was-not-that-difficult-3kk8
+- <https://dev.to/deciduously/oops-i-did-it-againi-made-a-rust-web-api-and-it-was-not-that-difficult-3kk8>

@@ -1,6 +1,8 @@
 use std::{collections::HashMap, fmt, str};
 
-use crate::Error;
+use serde::Serialize;
+
+use crate::{Error};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Method {
@@ -34,4 +36,22 @@ pub struct Request {
     pub path: String,
     pub headers: HashMap<String, String>,
     pub body: Option<String>,
+}
+
+pub struct Response {
+    pub status: u16,
+    pub body: Option<String>,
+}
+
+impl Response {
+    pub fn new<S: Serialize>(mut status: u16, body: &S) -> Response {
+        let body = serde_json::to_string(body).unwrap_or_else(|_| {
+            status = 500;
+            "serialization error".to_string()
+        });
+        Response {
+            status,
+            body: Some(body),
+        }
+    }
 }

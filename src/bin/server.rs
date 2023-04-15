@@ -1,16 +1,16 @@
 use std::sync::{Arc, RwLock};
 
 use friday::{
-    asynchttp::{write, Router, Server},
-    http::Request,
+    asynchttp::{Router, Server},
+    http::{Request, Response},
     DefaultManager, FileBackedRepo, Manager,
 };
 
-use tokio::io::AsyncWriteExt;
 
-async fn list(_: Request, rw: impl AsyncWriteExt + Unpin, manager: impl Manager + Sync + Send) {
+
+async fn list(_: Request, manager: impl Manager + Sync + Send) -> Response {
     let list = manager.list(None).unwrap();
-    write(rw, 200, &format!("{:?}", list)).await
+    Response::new(200, &list)
 }
 
 #[tokio::main]
@@ -21,11 +21,12 @@ async fn main() {
     let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
 
     let mut router = Router::new();
-    router.register_handler("/lol", move |_, rw| write(rw, 200, "lol"));
-    router.register_handler("/done", move |_, rw| write(rw, 200, "done"));
-    router.register_handler("/func", move |r, rw| {
+    router.register_handler("/lol", move |_| async move {
+        Response::new(200, &"lol".to_string())
+    });
+    router.register_handler("/func", move |r| {
         let manager = Arc::clone(&manager);
-        async move { list(r, rw, manager).await }
+        async move { list(r, manager).await }
     });
 
     let server = Server::new(router);
