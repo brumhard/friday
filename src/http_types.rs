@@ -2,20 +2,26 @@ use std::{collections::HashMap, fmt, str};
 
 use serde::Serialize;
 
-use crate::{Error};
+use crate::Error;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Method {
     GET,
     POST,
+    PUT,
+    DELETE,
+    PATCH,
 }
 
 impl str::FromStr for Method {
     type Err = Error;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "GET" => Ok(Self::GET),
-            "POST" => Ok(Self::POST),
+        match s.to_lowercase().as_str() {
+            "get" => Ok(Self::GET),
+            "post" => Ok(Self::POST),
+            "put" => Ok(Self::PUT),
+            "patch" => Ok(Self::PATCH),
+            "delete" => Ok(Self::DELETE),
             invalid => Err(Error::InvalidArgument(format!(
                 "{invalid} is not an HTTP method"
             ))),

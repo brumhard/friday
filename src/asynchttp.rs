@@ -1,8 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, future::Future, sync::Arc};
 
 use async_trait::async_trait;
 
-use futures::Future;
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, ToSocketAddrs},
@@ -16,25 +15,53 @@ use crate::{
 };
 
 pub struct Router {
-    handlers: Vec<(String, Box<dyn Handler + Send + Sync>)>,
+    handlers: Vec<Route>,
+}
+
+struct Route {
+    path: String,
+    handler: Box<dyn Handler + Send + Sync>,
+    method: Option<Method>,
+}
+
+macro_rules! route_method {
+    ($name:ident) => {
+        route_method!($name, Some(stringify!($name).parse().unwrap()));
+    };
+    ($name:ident, $method:expr) => {
+        pub fn $name<H: Handler + Send + Sync + 'static>(&mut self, path: &str, handler: H) {
+            self.handlers.push(Route {
+                path: path.to_owned(),
+                handler: Box::new(handler),
+                method: $method,
+            })
+        }
+    };
 }
 
 impl Router {
     pub fn new() -> Router {
         Router { handlers: vec![] }
     }
-    pub fn register_handler<H: Handler + Send + Sync + 'static>(&mut self, path: &str, handler: H) {
-        self.handlers.push((path.to_owned(), Box::new(handler)))
-    }
+    route_method!(path, None);
+    route_method!(get);
+    route_method!(post);
+    route_method!(put);
+    route_method!(patch);
+    route_method!(delete);
 }
 
 #[async_trait]
 impl Handler for Router {
     async fn handle(&self, r: Request) -> Response {
-        for (path, handler) in &self.handlers {
-            if r.path.contains(path) {
-                return handler.handle(r).await;
+        for route in &self.handlers {
+            if !r.path.contains(&route.path) {
+                continue;
             }
+            if route.method.is_some() && route.method.as_ref().unwrap() != &r.method {
+                continue;
+            }
+            return route.handler.handle(r).await;
         }
         Response::new(404, &"not found".to_string())
     }

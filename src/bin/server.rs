@@ -6,8 +6,6 @@ use friday::{
     DefaultManager, FileBackedRepo, Manager,
 };
 
-
-
 async fn list(_: Request, manager: impl Manager + Sync + Send) -> Response {
     let list = manager.list(None).unwrap();
     Response::new(200, &list)
@@ -21,12 +19,15 @@ async fn main() {
     let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
 
     let mut router = Router::new();
-    router.register_handler("/lol", move |_| async move {
+    router.path("/lol", move |_| async move {
         Response::new(200, &"lol".to_string())
     });
-    router.register_handler("/func", move |r| {
+    router.path("/func", move |r| {
         let manager = Arc::clone(&manager);
         async move { list(r, manager).await }
+    });
+    router.get("/get", move |_| async move {
+        Response::new(200, &"get".to_string())
     });
 
     let server = Server::new(router);
