@@ -4,7 +4,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::Error;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Method {
     GET,
     POST,
@@ -37,6 +37,7 @@ impl fmt::Display for Method {
     }
 }
 
+#[derive(Clone)]
 pub struct Request {
     pub method: Method,
     pub path: String,

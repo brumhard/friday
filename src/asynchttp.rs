@@ -1,8 +1,8 @@
-use std::{collections::HashMap, future::Future, marker::PhantomData, sync::Arc};
+use std::{collections::HashMap, future::Future, sync::Arc};
 
 use async_trait::async_trait;
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, ToSocketAddrs},
@@ -17,6 +17,7 @@ use crate::{
 
 pub struct Router {
     handlers: Vec<Route>,
+    middlewares: Vec<Box<dyn Middleware + Send + Sync>>,
 }
 
 struct Route {
@@ -42,7 +43,13 @@ macro_rules! route_method {
 
 impl Router {
     pub fn new() -> Router {
-        Router { handlers: vec![] }
+        Router {
+            handlers: vec![],
+            middlewares: vec![],
+        }
+    }
+    pub fn mw<M: Middleware + Sync + Send + 'static>(&mut self, mw: M) {
+        self.middlewares.push(Box::new(mw))
     }
     route_method!(path, None);
     route_method!(get);
@@ -56,11 +63,16 @@ impl Router {
 impl Handler for Router {
     async fn handle(&self, r: Request) -> Response {
         for route in &self.handlers {
-            if !r.path.contains(&route.path) {
+            if !r.path.starts_with(&route.path) {
                 continue;
             }
             if route.method.is_some() && route.method.as_ref().unwrap() != &r.method {
                 continue;
+            }
+            for mw in self.middlewares.iter().rev() {
+                if let Some(resp) = mw.execute(r.clone()).await {
+                    return resp;
+                }
             }
             return route.handler.handle(r).await;
         }
@@ -213,4 +225,20 @@ async fn read_body(
         body = Some(String::from_utf8_lossy(&body_buffer).into());
     }
     Ok(body)
+}
+
+#[async_trait]
+pub trait Middleware {
+    async fn execute(&self, r: Request) -> Option<Response>;
+}
+
+#[async_trait]
+impl<F, Fut> Middleware for F
+where
+    Fut: Future<Output = Option<Response>> + Send + Sync,
+    F: Fn(Request) -> Fut + Send + Sync,
+{
+    async fn execute(&self, r: Request) -> Option<Response> {
+        self(r).await
+    }
 }

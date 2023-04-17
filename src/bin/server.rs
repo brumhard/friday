@@ -45,20 +45,25 @@ async fn main() {
         }
         Response::json(200, &t.unwrap())
     });
-    // router.path("/lol", move |r, JSON(t): JSON<test>| async move {
-    //     Response::new(200, &"lol".to_string())
-    // });
-    router.path("/func", move |r| {
+    router.path("/func", {
         let manager = Arc::clone(&manager);
-        async move { list(r, manager).await }
+        move |r| {
+            let manager = Arc::clone(&manager);
+            async move { list(r, manager).await }
+        }
     });
-    // FIXME: the following does not work because manager is moved
-    router.path("/test", move |r| {
-        let manager = Arc::clone(&manager);
-        async move { list(r, manager).await }
-    });
+
     router.get("/get", move |_| async move {
         Response::json(200, &"get".to_string())
+    });
+    router.mw(move |r: Request| async move {
+        if r.raw_body.is_some() && r.headers["Content-Type"] != "application/json" {
+            return Some(Response::json(
+                400,
+                &ErrorBody::new("unsupported content-type"),
+            ));
+        }
+        None
     });
 
     let server = Server::new(router);
