@@ -30,8 +30,7 @@ struct ExampleBody {
     test: String,
 }
 
-#[tokio::main]
-async fn main() {
+pub async fn main() {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
 
     let repo = FileBackedRepo::new("./testing").unwrap();
