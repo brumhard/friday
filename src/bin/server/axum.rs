@@ -1,3 +1,3 @@
 pub async fn main() {
-    println!("hello from axum")
+    println!("hello from axum server")
 }
