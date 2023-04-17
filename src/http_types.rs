@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt, str};
 
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::Error;
 
@@ -41,7 +41,20 @@ pub struct Request {
     pub method: Method,
     pub path: String,
     pub headers: HashMap<String, String>,
-    pub body: Option<String>,
+    pub raw_body: Option<String>,
+}
+
+impl Request {
+    pub fn json<D: DeserializeOwned>(&self) -> Option<D> {
+        if let Some(body) = &self.raw_body {
+            let d = serde_json::from_str(body);
+            match d {
+                Ok(d) => return Some(d),
+                Err(_) => return None,
+            }
+        }
+        None
+    }
 }
 
 pub struct Response {
@@ -50,7 +63,7 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn new<S: Serialize>(mut status: u16, body: &S) -> Response {
+    pub fn json<S: Serialize>(mut status: u16, body: &S) -> Response {
         let body = serde_json::to_string(body).unwrap_or_else(|_| {
             status = 500;
             "serialization error".to_string()

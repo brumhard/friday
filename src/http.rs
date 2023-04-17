@@ -155,7 +155,7 @@ fn parse_request(reader: impl Read) -> Result<Request> {
         method,
         path,
         headers,
-        body,
+        raw_body: body,
     })
 }
 

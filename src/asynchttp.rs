@@ -1,7 +1,8 @@
-use std::{collections::HashMap, future::Future, sync::Arc};
+use std::{collections::HashMap, future::Future, marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
 
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, ToSocketAddrs},
@@ -63,7 +64,7 @@ impl Handler for Router {
             }
             return route.handler.handle(r).await;
         }
-        Response::new(404, &"not found".to_string())
+        Response::json(404, &HashMap::from([("error", "not found")]))
     }
 }
 
@@ -175,7 +176,7 @@ async fn parse_request<R: AsyncReadExt + Unpin>(reader: R) -> Result<Request> {
         method,
         path,
         headers,
-        body,
+        raw_body: body,
     })
 }
 
