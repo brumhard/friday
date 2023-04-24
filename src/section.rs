@@ -2,7 +2,10 @@ use core::fmt;
 use std::default;
 use std::str;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug, DeserializeFromStr, SerializeDisplay)]
 pub enum Section {
     Dump,
     Custom(String),
