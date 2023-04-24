@@ -1,7 +1,6 @@
-use std::{collections::HashMap, future::Future, sync::Arc};
+use std::{collections::HashMap, default, future::Future, sync::Arc};
 
 use async_trait::async_trait;
-
 
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
@@ -49,7 +48,7 @@ impl Router {
         }
     }
     pub fn mw<M: Middleware + Sync + Send + 'static>(&mut self, mw: M) {
-        self.middlewares.push(Box::new(mw))
+        self.middlewares.push(Box::new(mw));
     }
     route_method!(path, None);
     route_method!(get);
@@ -57,6 +56,12 @@ impl Router {
     route_method!(put);
     route_method!(patch);
     route_method!(delete);
+}
+
+impl default::Default for Router {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[async_trait]
@@ -113,7 +118,7 @@ impl<H: Handler + Send + Sync + 'static> Server<H> {
                     };
                     log::debug!("handling request");
                     let resp = handler.handle(r).await;
-                    write(stream, resp.status, &resp.body.unwrap()).await
+                    write(stream, resp.status, &resp.body.unwrap_or_default()).await;
                 }
             });
         }
@@ -157,7 +162,7 @@ Content-Length: {content_length}
     writer
         .write_all(response.as_bytes())
         .await
-        .unwrap_or_else(|e| log::error!("failed to write response: {e}"))
+        .unwrap_or_else(|e| log::error!("failed to write response: {e}"));
 }
 
 async fn parse_request<R: AsyncReadExt + Unpin>(reader: R) -> Result<Request> {

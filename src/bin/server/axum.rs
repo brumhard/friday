@@ -1,11 +1,11 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{Redirect},
+    response::Redirect,
     routing::{get, post},
     Json, Router,
 };
-use friday::{DefaultManager, FileBackedRepo, Manager, Section};
+use friday::{Default, FileBacked, Manager, Section};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -16,8 +16,8 @@ use std::{
 type Mngr = Arc<RwLock<dyn Manager + Sync + Send>>;
 
 pub async fn main() {
-    let repo = FileBackedRepo::new("./testing").unwrap();
-    let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
+    let repo = FileBacked::new("./testing").unwrap();
+    let manager = Arc::new(RwLock::new(Default::new(repo)));
     let routes = Router::new()
         .route("/tasks", get(handle_get_tasks))
         .route("/tasks/:section", get(handle_get_tasks_in_section))
@@ -35,11 +35,13 @@ pub async fn main() {
         .unwrap();
 }
 
+#[allow(clippy::unused_async)] // required for handler function signature
 async fn handle_get_tasks(State(mngr): State<Mngr>) -> Result<HashMap<Section, Vec<String>>> {
     let sections = mngr.read().unwrap().sections().map_err(to_http_err)?;
     Ok((StatusCode::OK, Json(sections)))
 }
 
+#[allow(clippy::unused_async)] // required for handler function signature
 async fn handle_get_tasks_in_section(
     Path(section): Path<Section>,
     State(mngr): State<Mngr>,
@@ -52,6 +54,7 @@ async fn handle_get_tasks_in_section(
     Ok((StatusCode::OK, Json(ListResponse { items })))
 }
 
+#[allow(clippy::unused_async)] // required for handler function signature
 async fn handle_post_tasks(
     Path(section): Path<Section>,
     State(mngr): State<Mngr>,
@@ -80,6 +83,8 @@ struct ListResponse<T> {
 struct ErrResponse {
     message: String,
 }
+
+#[allow(clippy::needless_pass_by_value)] // easier to use with this signature
 fn to_http_err(e: friday::Error) -> (StatusCode, Json<ErrResponse>) {
     let status = match &e {
         e if e.to_string().contains("not found") => StatusCode::NOT_FOUND,

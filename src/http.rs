@@ -22,7 +22,7 @@ impl<'func, T: Write> FuncWrapper<'func, T> {
 impl<T: Write> Handler<T> for FuncWrapper<'_, T> {
     fn handle(&self, r: Request, rw: T) {
         let f = &self.f;
-        f(r, rw)
+        f(r, rw);
     }
 }
 
@@ -91,14 +91,20 @@ impl<'handler, T: Write + 'handler> Server<'handler, T> {
         path: &str,
         handler: H,
     ) {
-        self.handlers.push((path.to_owned(), Box::new(handler)))
+        self.handlers.push((path.to_owned(), Box::new(handler)));
     }
 
     pub fn register_func<F>(&mut self, path: &str, f: F)
     where
         F: Fn(Request, T) + Send + Sync + 'handler,
     {
-        self.register_handler(path, FuncWrapper::new(f))
+        self.register_handler(path, FuncWrapper::new(f));
+    }
+}
+
+impl<'handler, T: Write + 'handler> Default for Server<'handler, T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -123,7 +129,7 @@ Content-Length: {content_length}
 
 {body}"
     )
-    .unwrap_or_else(|e| log::error!("failed to write response: {e}"))
+    .unwrap_or_else(|e| log::error!("failed to write response: {e}"));
 }
 
 fn parse_request(reader: impl Read) -> Result<Request> {
@@ -132,12 +138,12 @@ fn parse_request(reader: impl Read) -> Result<Request> {
     let first_line = match lines.next() {
         Some(Ok(line)) => line,
         // error for empty will be handled in parse_first_line
-        None => "".to_string(),
+        None => String::new(),
         Some(Err(e)) => {
             return Err(e.into());
         }
     };
-    let (method, path, _) = parse_first_line(first_line)?;
+    let (method, path, _) = parse_first_line(&first_line)?;
 
     let mut headers: HashMap<String, String> = HashMap::new();
     for line_result in lines {
@@ -159,7 +165,7 @@ fn parse_request(reader: impl Read) -> Result<Request> {
     })
 }
 
-fn parse_first_line(s: String) -> Result<(Method, String, String)> {
+fn parse_first_line(s: &str) -> Result<(Method, String, String)> {
     let parts: Vec<&str> = s.splitn(3, ' ').collect();
     if parts.len() != 3 {
         return Err(Error::InvalidArgument(

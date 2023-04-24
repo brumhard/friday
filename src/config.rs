@@ -51,7 +51,7 @@ impl Config {
     // TODO: add doc test here: https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#documentation-comments-as-tests
     pub fn build(
         mut args: impl Iterator<Item = String>,
-        env_vars: HashMap<String, String>,
+        env_vars: &HashMap<String, String>,
     ) -> Result<Config, Error> {
         // first item is binary name
         args.next();
@@ -97,7 +97,7 @@ mod tests {
                     .iter()
                     .map(|&s| s.to_string())
                     .collect();
-                let cfg = Config::build(args.into_iter(), HashMap::new())?;
+                let cfg = Config::build(args.into_iter(), &HashMap::new())?;
                 assert!(cfg.input.is_some());
                 let input = cfg.input.unwrap();
                 assert_eq!(input, $out.to_string());
@@ -121,7 +121,7 @@ mod tests {
 
         let args = vec!["binary".to_string(), "show".to_string()];
         let env_vars = HashMap::from([("FRIDAY_FILE".to_string(), friday_file.clone())]);
-        let cfg = Config::build(args.into_iter(), env_vars)?;
+        let cfg = Config::build(args.into_iter(), &env_vars)?;
         assert_eq!(
             cfg,
             Config {
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn config_fails_for_invalid_enum() {
         let args = vec!["binary".to_string(), "invalid".to_string()];
-        let cfg = Config::build(args.into_iter(), HashMap::new());
+        let cfg = Config::build(args.into_iter(), &HashMap::new());
         assert!(cfg.is_err());
     }
 }

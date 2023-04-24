@@ -17,7 +17,7 @@ pub trait Repo {
     fn delete(&self, task: &str, section: Section) -> Result<()>;
 }
 
-pub struct FileBackedRepo<T: AsRef<Path>> {
+pub struct FileBacked<T: AsRef<Path>> {
     file: T,
 }
 
@@ -49,9 +49,7 @@ impl LineContent {
 impl fmt::Display for LineContent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Ignored(x) => write!(f, "{x}"),
-            Self::Task(x) => write!(f, "{x}"),
-            Self::Section(x) => write!(f, "{x}"),
+            Self::Ignored(x) | Self::Task(x) | Self::Section(x) => write!(f, "{x}"),
         }
     }
 }
@@ -67,18 +65,18 @@ impl str::FromStr for LineContent {
     }
 }
 
-impl<T: AsRef<Path>> FileBackedRepo<T> {
-    pub fn new(path: T) -> Result<FileBackedRepo<T>> {
+impl<T: AsRef<Path>> FileBacked<T> {
+    pub fn new(path: T) -> Result<FileBacked<T>> {
         let file = File::options().create(true).append(true).open(&path)?;
         if file.metadata()?.len() == 0 {
             writeln!(&file, "# It's friday my dudes")?;
         }
-        Ok(FileBackedRepo { file: path })
+        Ok(FileBacked { file: path })
     }
 
     fn lines(&self) -> Result<Vec<Line>> {
         let file_content = fs::read_to_string(&self.file)?;
-        let mut current_section: Section = Default::default();
+        let mut current_section = Section::default();
         let mut lines = Vec::new();
         // the use of split instead of lines() is intended to keep the
         // any trailing newline characters in the file
@@ -89,14 +87,14 @@ impl<T: AsRef<Path>> FileBackedRepo<T> {
             }
 
             lines.push(Line {
-                section: current_section.to_owned(),
+                section: current_section.clone(),
                 content,
-            })
+            });
         }
         Ok(lines)
     }
 
-    fn dump_lines(&self, lines: Vec<Line>) -> Result<()> {
+    fn dump_lines(&self, lines: &[Line]) -> Result<()> {
         let content = lines
             .iter()
             .map(|l| l.content.to_string())
@@ -107,7 +105,7 @@ impl<T: AsRef<Path>> FileBackedRepo<T> {
     }
 }
 
-impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
+impl<T: AsRef<Path>> Repo for FileBacked<T> {
     fn create(&self, task: &str, section: Section) -> Result<()> {
         let mut lines = self.lines()?;
 
@@ -134,7 +132,7 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
 
         if last_line_in_section.is_none() {
             let section_line = Line {
-                section: section.to_owned(),
+                section: section.clone(),
                 content: LineContent::Section(format!("## {}", section)),
             };
             // insert section either before the first other section
@@ -144,7 +142,7 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
                 last_line_in_section = Some(line);
             } else {
                 lines.push(section_line);
-                last_line_in_section = Some(lines.len() - 1)
+                last_line_in_section = Some(lines.len() - 1);
             }
         }
 
@@ -157,7 +155,7 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
             },
         );
 
-        self.dump_lines(lines)
+        self.dump_lines(&lines)
     }
 
     fn delete(&self, task: &str, section: Section) -> Result<()> {
@@ -178,7 +176,7 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
         }
 
         lines.remove(remove_index.unwrap());
-        self.dump_lines(lines)
+        self.dump_lines(&lines)
     }
 
     fn list(&self, section: Section) -> Result<Vec<String>> {
@@ -186,7 +184,7 @@ impl<T: AsRef<Path>> Repo for FileBackedRepo<T> {
         let tasks = sections
             .get(&section)
             .ok_or_else(|| Error::InvalidArgument(format!("section {section} not found")))?
-            .to_owned();
+            .clone();
         Ok(tasks)
     }
 
@@ -219,7 +217,7 @@ mod tests {
     fn new_creates_file_with_header_if_not_exists() -> Result<(), Box<dyn Error>> {
         let tmp_dir = tempdir::TempDir::new("example")?;
         let file_path = tmp_dir.path().join("testing");
-        FileBackedRepo::new(&file_path)?;
+        FileBacked::new(&file_path)?;
         assert!(file_path.exists());
         assert!(fs::read_to_string(file_path)?.contains("friday"));
         Ok(())
@@ -227,11 +225,11 @@ mod tests {
 
     // the returned temp_dir is only returned to keep the reference and not destroy it
     // before the function tests are done.
-    fn setup(content: &str) -> Result<(FileBackedRepo<PathBuf>, TempDir), Box<dyn Error>> {
+    fn setup(content: &str) -> Result<(FileBacked<PathBuf>, TempDir), Box<dyn Error>> {
         let tmp_dir = tempdir::TempDir::new("example")?;
         let file_path = tmp_dir.path().join("testing");
         fs::write(&file_path, content)?;
-        let file_repo = FileBackedRepo::new(file_path)?;
+        let file_repo = FileBacked::new(file_path)?;
         Ok((file_repo, tmp_dir))
     }
 
@@ -320,7 +318,7 @@ mod tests {
         assert_eq!(initial_content, content);
 
         let lines = file_repo.lines()?;
-        file_repo.dump_lines(lines)?;
+        file_repo.dump_lines(&lines)?;
 
         let content = fs::read_to_string(&file_repo.file)?;
         assert_eq!(initial_content, content);

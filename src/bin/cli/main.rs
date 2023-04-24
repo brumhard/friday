@@ -1,5 +1,7 @@
+#![warn(clippy::pedantic)]
+
 use colored::Colorize;
-use friday::{Action, Config, DefaultManager, Error, FileBackedRepo, Manager, Result, Section};
+use friday::{Action, Config, Default, Error, FileBacked, Manager, Result, Section};
 use std::{
     collections::HashMap,
     env,
@@ -14,7 +16,7 @@ fn main() {
     // see https://github.com/rust-lang/log
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("INFO"));
 
-    let cfg = Config::build(env::args(), env::vars().collect()).unwrap_or_else(|e| {
+    let cfg = Config::build(env::args(), &env::vars().collect()).unwrap_or_else(|e| {
         eprintln!("failed to load options: {e}");
         exit(1)
     });
@@ -22,25 +24,24 @@ fn main() {
     run(cfg).unwrap_or_else(|e| {
         eprint!("error during run: {e}");
         exit(1)
-    })
+    });
 }
 
 fn run(cfg: Config) -> Result<()> {
     log::debug!("running with config '{:?}'", cfg);
-    let repo = FileBackedRepo::new(&cfg.file)?;
-    let manager = DefaultManager::new(repo);
+    let repo = FileBacked::new(&cfg.file)?;
+    let manager = Default::new(repo);
 
     if manager.sections()?.is_empty() {
         manager.add("this where stuff lands by default", Some("dump"))?;
         manager.add("start here", Some("TODO"))?;
     }
 
-    use Action::*;
     match cfg.action {
-        Add => manager.add(cfg.input.unwrap_or_default().as_str(), None),
-        Show => show(manager.sections()?),
-        Edit => edit_file(&cfg.file),
-        Help => print_help(),
+        Action::Add => manager.add(cfg.input.unwrap_or_default().as_str(), None),
+        Action::Show => show(manager.sections()?),
+        Action::Edit => edit_file(&cfg.file),
+        Action::Help => print_help(),
     }
 }
 
@@ -49,7 +50,7 @@ fn edit_file(path: &str) -> Result<()> {
     // also handles case where EDITOR is set to "" explictly
     if editor.trim().is_empty() {
         log::debug!("resetting EDITOR to default");
-        editor = DEFAULT_EDITOR.to_string()
+        editor = DEFAULT_EDITOR.to_string();
     }
 
     // in case the editor env var contains args like e.g. `code -w`
@@ -72,20 +73,22 @@ fn edit_file(path: &str) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::unnecessary_wraps)] // easier to use in run
 fn show(sections: HashMap<Section, Vec<String>>) -> Result<()> {
     for (section, tasks) in sections {
         let section_header = format!("## {section}").cyan();
         println!("{section_header}");
 
         for task in tasks {
-            println!("- {task}",)
+            println!("- {task}",);
         }
 
-        println!()
+        println!();
     }
     Ok(())
 }
 
+#[allow(clippy::unnecessary_wraps)] // easier to use in run
 fn print_help() -> Result<()> {
     println!(
         "\
