@@ -54,6 +54,7 @@
               clippy
               vhs
               libiconv
+              (callPackage ./nix/spin.nix { })
             ];
 
             # https://github.com/rust-lang/rustfmt/issues/1707 
