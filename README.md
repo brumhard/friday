@@ -1,9 +1,21 @@
-# It's friday my dudes
+# It's ~~wednesday~~ friday my dudes
 
-## TODO
+> Friday is a toy project to learn rust.
+> It provides a CLI as well as a REST API to manage tasks to do on fridays.
 
-- implement rest api with warp
-- check `cargo clippy -- -W clippy::pedantic`
-- use anyhow in binary crates, thiserror in libary crates
-- add tracing spans to server and replace logs with tracing <https://docs.rs/tracing/latest/tracing/>
+![friday-logo](logo.png)
+
+## Demo
+
+![demo](demo.gif)
+
+## TODOs
+
+- error handling
+  - use anyhow in binary crates, thiserror in libary crates
+  - cleanup error enum to not be CLI specific
+- server
+  - add tracing spans to server and replace logs with tracing <https://docs.rs/tracing/latest/tracing/>
+  - add middlewares
+  - add graceful shutdown
 - release on github

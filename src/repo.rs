@@ -69,7 +69,20 @@ impl<T: AsRef<Path>> FileBacked<T> {
     pub fn new(path: T) -> Result<FileBacked<T>> {
         let file = File::options().create(true).append(true).open(&path)?;
         if file.metadata()?.len() == 0 {
-            writeln!(&file, "# It's friday my dudes")?;
+            writeln!(
+                &file,
+                "\
+# It's friday my dudes
+
+## todo
+
+- start here
+
+<!-- this is a comment ignored by default -->
+## dump
+
+- this where stuff lands by default"
+            )?;
         }
         Ok(FileBacked { file: path })
     }

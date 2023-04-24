@@ -32,11 +32,6 @@ fn run(cfg: Config) -> Result<()> {
     let repo = FileBacked::new(&cfg.file)?;
     let manager = Default::new(repo);
 
-    if manager.sections()?.is_empty() {
-        manager.add("this where stuff lands by default", Some("dump"))?;
-        manager.add("start here", Some("TODO"))?;
-    }
-
     match cfg.action {
         Action::Add => manager.add(cfg.input.unwrap_or_default().as_str(), None),
         Action::Show => show(manager.sections()?),

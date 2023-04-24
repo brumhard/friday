@@ -52,6 +52,8 @@
               rustfmt
               rust-analyzer
               clippy
+              libiconv
+              vhs
             ];
 
             shellHook = ''
