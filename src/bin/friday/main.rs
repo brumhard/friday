@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 
 use colored::Colorize;
-use friday::{Action, Config, Default, Error, FileBacked, Manager, Result, Section};
+use friday::{Action, Config, DefaultManager, Error, FileBacked, Manager, Result, Section};
 use std::{
     collections::HashMap,
     env,
@@ -30,7 +30,7 @@ fn main() {
 fn run(cfg: Config) -> Result<()> {
     log::debug!("running with config '{:?}'", cfg);
     let repo = FileBacked::new(&cfg.file)?;
-    let manager = Default::new(repo);
+    let manager = DefaultManager::new(repo);
 
     match cfg.action {
         Action::Add => manager.add(cfg.input.unwrap_or_default().as_str(), None),

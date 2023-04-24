@@ -146,7 +146,7 @@ impl<T: AsRef<Path>> Repo for FileBacked<T> {
         if last_line_in_section.is_none() {
             let section_line = Line {
                 section: section.clone(),
-                content: LineContent::Section(format!("## {}", section)),
+                content: LineContent::Section(format!("## {section}")),
             };
             // insert section either before the first other section
             // or at the end if there are no sections yet

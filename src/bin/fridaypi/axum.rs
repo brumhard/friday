@@ -1,11 +1,17 @@
+use aide::{
+    axum::{
+        routing::{get, post},
+        ApiRouter,
+    },
+    openapi::{Info, OpenApi},
+};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::Redirect,
-    routing::{get, post},
-    Json, Router,
+    Extension, Json,
 };
-use friday::{Default, FileBacked, Manager, Section};
+use friday::{DefaultManager, FileBacked, Manager, Section};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -17,20 +23,38 @@ type Mngr = Arc<RwLock<dyn Manager + Sync + Send>>;
 
 pub async fn main() {
     let repo = FileBacked::new("./testing").unwrap();
-    let manager = Arc::new(RwLock::new(Default::new(repo)));
-    let routes = Router::new()
-        .route("/tasks", get(handle_get_tasks))
-        .route("/tasks/:section", get(handle_get_tasks_in_section))
+    let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
+    let routes = ApiRouter::new()
+        .api_route("/tasks", get(handle_get_tasks))
+        .api_route("/tasks/:section", get(handle_get_tasks_in_section))
+        // https://github.com/tamasfe/aide/pull/38
+        // .api_route(
+        //     "/tasks",
+        //     post(|| async { Redirect::permanent("/tasks/dump") }),
+        // )
+        .api_route("/tasks/:section", post(handle_post_tasks))
         .route(
-            "/tasks",
-            post(|| async { Redirect::permanent("/tasks/dump") }),
+            "/api.json",
+            get(|Extension(api): Extension<OpenApi>| async { Json(api) }),
         )
-        .route("/tasks/:section", post(handle_post_tasks))
         .with_state(manager);
+
+    let mut api = OpenApi {
+        info: Info {
+            description: Some("Friday API".to_string()),
+            ..Info::default()
+        },
+        ..OpenApi::default()
+    };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum::Server::bind(&addr)
-        .serve(routes.into_make_service())
+        .serve(
+            routes
+                .finish_api(&mut api)
+                .layer(Extension(api))
+                .into_make_service(),
+        )
         .await
         .unwrap();
 }
@@ -70,16 +94,17 @@ async fn handle_post_tasks(
 
 type Result<T> = std::result::Result<(StatusCode, Json<T>), (StatusCode, Json<ErrResponse>)>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 struct CreateTask {
     task: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 struct ListResponse<T> {
     items: Vec<T>,
 }
-#[derive(Serialize, Deserialize)]
+
+#[derive(Serialize, Deserialize, JsonSchema)]
 struct ErrResponse {
     message: String,
 }

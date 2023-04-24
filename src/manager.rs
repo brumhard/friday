@@ -30,17 +30,17 @@ impl<T: Manager> Manager for Arc<RwLock<T>> {
     }
 }
 
-pub struct Default<T: Repo> {
+pub struct DefaultManager<T: Repo> {
     repo: T,
 }
 
-impl<T: Repo> Default<T> {
-    pub fn new(repo: T) -> Default<T> {
-        Default { repo }
+impl<T: Repo> DefaultManager<T> {
+    pub fn new(repo: T) -> DefaultManager<T> {
+        DefaultManager { repo }
     }
 }
 
-impl<T: Repo> Manager for Default<T> {
+impl<T: Repo> Manager for DefaultManager<T> {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()> {
         if task.trim().is_empty() {
             return Err(Error::InvalidArgument(
@@ -94,7 +94,7 @@ mod tests {
             .expect_list()
             .returning(|_| Ok(vec!["some_task".to_string(), "some_other_task".to_string()]));
 
-        let mngr = Default { repo: mock_repo };
+        let mngr = DefaultManager { repo: mock_repo };
         assert!(mngr.rm("some", Some("section")).is_err());
     }
 
@@ -103,7 +103,7 @@ mod tests {
         let mut mock_repo = MockRepo::new();
         mock_repo.expect_list().returning(|_| Ok(vec![]));
 
-        let mngr = Default { repo: mock_repo };
+        let mngr = DefaultManager { repo: mock_repo };
         assert!(mngr.rm("some", Some("section")).is_err());
     }
 
@@ -120,7 +120,7 @@ mod tests {
             .times(1)
             .returning(|_, _| Ok(()));
 
-        let mngr = Default { repo: mock_repo };
+        let mngr = DefaultManager { repo: mock_repo };
         assert!(mngr.rm("some", Some("dump")).is_ok());
     }
 }

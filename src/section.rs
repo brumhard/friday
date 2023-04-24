@@ -2,10 +2,11 @@ use core::fmt;
 use std::default;
 use std::str;
 
+use schemars::JsonSchema;
 use serde_with::DeserializeFromStr;
 use serde_with::SerializeDisplay;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug, DeserializeFromStr, SerializeDisplay)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, DeserializeFromStr, SerializeDisplay, JsonSchema)]
 pub enum Section {
     Dump,
     Custom(String),
