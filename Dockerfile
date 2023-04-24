@@ -19,11 +19,11 @@ FROM base as build
 COPY src/ src/
 RUN --mount=type=cache,target=$CARGO_HOME \
     --mount=type=cache,target=$BUILD_TARGET <<EOF
-    cargo build --release --bin server
-    cp $BUILD_TARGET/release/server /
+    cargo build --release --bin fridaypi
+    cp $BUILD_TARGET/release/fridaypi /
 EOF
 
 FROM --platform=$TARGETPLATFORM gcr.io/distroless/cc:nonroot
-COPY --from=build /server /
+COPY --from=build /fridaypi /
 
-ENTRYPOINT [ "/server" ]
+ENTRYPOINT [ "/fridaypi" ]
