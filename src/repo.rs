@@ -263,7 +263,12 @@ mod tests {
         };
     }
 
-    test_list_all!(list_all_no_content, "");
+    test_list_all!(
+        list_all_no_content,
+        "",
+        (Section::Dump, vec!["this where stuff lands by default"]),
+        (Section::Custom("todo".to_string()), vec!["start here"])
+    );
     test_list_all!(
         list_all_only_dump,
         "\
@@ -312,7 +317,9 @@ mod tests {
     #[test]
     fn list_returns_error_on_not_found() {
         let (file_repo, _tmp_dir) = setup("").unwrap();
-        assert!(file_repo.list(Section::Dump).is_err())
+        assert!(file_repo
+            .list(Section::Custom("non-existent".to_string()))
+            .is_err())
     }
 
     #[test]

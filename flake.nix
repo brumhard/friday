@@ -34,14 +34,14 @@
           };
 
           apps = {
-            default = apps.cli;
-            cli = utils.lib.mkApp {
+            default = apps.friday;
+            friday = utils.lib.mkApp {
               drv = packages.default;
-              exePath = "/bin/cli";
+              exePath = "/bin/friday";
             };
-            server = utils.lib.mkApp {
+            fridaypi = utils.lib.mkApp {
               drv = packages.default;
-              exePath = "/bin/server";
+              exePath = "/bin/fridaypi";
             };
           };
 

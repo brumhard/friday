@@ -3,7 +3,7 @@ use std::{error::Error, fs};
 use assert_cmd::Command;
 
 fn friday_cli() -> Command {
-    Command::cargo_bin("cli").unwrap()
+    Command::cargo_bin("friday").unwrap()
 }
 
 // NOTE: it would also be possible to move the code in main.rs to lib.rs and only call

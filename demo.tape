@@ -13,7 +13,7 @@ Set BorderRadius 10
 
 # Setup
 Hide
-Type "cargo build --bin cli --release && alias friday=./target/release/cli && clear"
+Type "cargo build --bin friday --release && alias friday=./target/release/friday && clear"
 Enter
 Sleep 3s
 Show
