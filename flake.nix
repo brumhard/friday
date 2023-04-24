@@ -52,11 +52,13 @@
               rustfmt
               rust-analyzer
               clippy
-              libiconv
               vhs
+              libiconv
             ];
 
+            # https://github.com/rust-lang/rustfmt/issues/1707 
             shellHook = ''
+              export DYLD_LIBRARY_PATH=$(${rustc}/bin/rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
               export RUST_SRC_PATH="${rustPlatform.rustLibSrc}";
               export FRIDAY_FILE=testing
             '';
