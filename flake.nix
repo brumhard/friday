@@ -45,25 +45,26 @@
             };
           };
 
-          devShell = mkShell {
-            packages = [
-              rustc
-              cargo
-              rustfmt
-              rust-analyzer
-              clippy
-              vhs
-              libiconv
-              (callPackage ./nix/spin.nix { })
-            ];
+          # switched to rustup for targets as defined in https://nixos.wiki/wiki/Rust
+          # TODO: try https://github.com/nix-community/fenix instead of rustup
+          devShell =
+            let
+              rustVersion = "1.69";
+            in
+            mkShell {
+              packages = [
+                rustup
+                vhs
+                libiconv
+                (callPackage ./nix/spin.nix { })
+              ];
 
-            # https://github.com/rust-lang/rustfmt/issues/1707 
-            shellHook = ''
-              export DYLD_LIBRARY_PATH=$(${rustc}/bin/rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
-              export RUST_SRC_PATH="${rustPlatform.rustLibSrc}";
-              export FRIDAY_FILE=testing
-            '';
-          };
+              shellHook = ''
+                export FRIDAY_FILE=testing
+                rustup default ${rustVersion}
+                rustup target add wasm32-wasi
+              '';
+            };
         }
       );
 }
