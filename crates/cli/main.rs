@@ -6,8 +6,8 @@ mod error;
 use config::{Action, Config};
 use error::{Error, Result};
 
-use colored::Colorize;
 use friday_core::{DefaultManager, FileBacked, Manager};
+use owo_colors::OwoColorize;
 use std::{
     env,
     io::{self},
@@ -82,7 +82,8 @@ fn edit_file(path: &str) -> Result<()> {
 fn show(manager: &impl Manager) -> Result<()> {
     let sections = manager.sections()?;
     for (section, tasks) in sections {
-        let section_header = format!("## {section}").cyan();
+        let section_header = format!("## {section}");
+        let section_header = section_header.cyan();
         println!("{section_header}");
 
         for task in tasks {

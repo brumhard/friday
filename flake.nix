@@ -53,6 +53,7 @@
             mkShell {
               packages = [
                 rustup
+                cargo-audit
                 vhs
                 libiconv
                 (callPackage ./nix/spin.nix { })
