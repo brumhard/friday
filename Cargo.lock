@@ -506,6 +506,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "friday_core",
+ "indexmap",
  "log",
  "schemars",
  "serde",
@@ -518,6 +519,7 @@ dependencies = [
 name = "friday_core"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "mockall",
  "schemars",
  "serde_with",
@@ -533,6 +535,7 @@ dependencies = [
  "bytes",
  "friday_core",
  "http",
+ "indexmap",
  "serde_json",
  "spin-sdk",
  "wit-bindgen-rust",

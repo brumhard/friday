@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+indexmap = "1.9.3"
 schemars = { version = "0.8.12", features = ["derive_json_schema"] }
 serde_with = "2.3.2"
 thiserror = "1.0.40"

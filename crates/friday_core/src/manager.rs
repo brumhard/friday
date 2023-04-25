@@ -1,6 +1,7 @@
+use indexmap::IndexMap;
+
 use crate::{error::Result, Error, Repo, Section};
 use std::{
-    collections::HashMap,
     str,
     sync::{Arc, RwLock},
 };
@@ -8,7 +9,7 @@ use std::{
 pub trait Manager {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()>;
     fn list(&self, section: Option<&str>) -> Result<Vec<String>>;
-    fn sections(&self) -> Result<HashMap<Section, Vec<String>>>;
+    fn sections(&self) -> Result<IndexMap<Section, Vec<String>>>;
     fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()>;
 }
 
@@ -21,7 +22,7 @@ impl<T: Manager> Manager for Arc<RwLock<T>> {
         self.read().unwrap().list(section)
     }
 
-    fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
+    fn sections(&self) -> Result<IndexMap<Section, Vec<String>>> {
         self.read().unwrap().sections()
     }
 
@@ -51,7 +52,7 @@ impl<T: Repo> Manager for DefaultManager<T> {
         self.repo.create(task, section.into())
     }
 
-    fn sections(&self) -> Result<HashMap<Section, Vec<String>>> {
+    fn sections(&self) -> Result<IndexMap<Section, Vec<String>>> {
         self.repo.list_all()
     }
 

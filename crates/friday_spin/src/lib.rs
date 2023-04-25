@@ -3,6 +3,7 @@
 use anyhow::Result;
 use friday_core::{DefaultManager, Manager, Repo};
 use http::StatusCode;
+use indexmap::IndexMap;
 use spin_sdk::{
     http::{Request, Response},
     http_component,
@@ -46,10 +47,7 @@ impl Repo for SpinRepo {
 
     fn list_all(
         &self,
-    ) -> std::result::Result<
-        std::collections::HashMap<friday_core::Section, Vec<String>>,
-        friday_core::Error,
-    > {
+    ) -> std::result::Result<IndexMap<friday_core::Section, Vec<String>>, friday_core::Error> {
         let test = self.store.get_keys().unwrap();
         Ok(test
             .iter()
@@ -72,6 +70,7 @@ impl Repo for SpinRepo {
 }
 
 /// A simple Spin HTTP component.
+#[allow(clippy::needless_pass_by_value)] // that's spins interface
 #[http_component]
 fn handle_friday(req: Request) -> Result<Response> {
     let manager = DefaultManager::new(SpinRepo::new()?);

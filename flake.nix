@@ -46,7 +46,6 @@
           };
 
           # switched to rustup for targets as defined in https://nixos.wiki/wiki/Rust
-          # TODO: try https://github.com/nix-community/fenix instead of rustup
           devShell =
             let
               rustVersion = "1.69";

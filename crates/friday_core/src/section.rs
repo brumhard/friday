@@ -6,7 +6,18 @@ use schemars::JsonSchema;
 use serde_with::DeserializeFromStr;
 use serde_with::SerializeDisplay;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug, DeserializeFromStr, SerializeDisplay, JsonSchema)]
+#[derive(
+    Ord,
+    PartialOrd,
+    PartialEq,
+    Eq,
+    Hash,
+    Clone,
+    Debug,
+    DeserializeFromStr,
+    SerializeDisplay,
+    JsonSchema,
+)]
 pub enum Section {
     Dump,
     Custom(String),

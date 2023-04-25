@@ -1,6 +1,6 @@
 use crate::{error::Result, Error, Section};
 use core::fmt;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::fs::File;
 use std::io::Write;
 use std::str;
@@ -13,7 +13,7 @@ use mockall::automock;
 pub trait Repo {
     fn create(&self, task: &str, section: Section) -> Result<()>;
     fn list(&self, section: Section) -> Result<Vec<String>>;
-    fn list_all(&self) -> Result<HashMap<Section, Vec<String>>>;
+    fn list_all(&self) -> Result<IndexMap<Section, Vec<String>>>;
     fn delete(&self, task: &str, section: Section) -> Result<()>;
 }
 
@@ -201,8 +201,8 @@ impl<T: AsRef<Path>> Repo for FileBacked<T> {
         Ok(tasks)
     }
 
-    fn list_all(&self) -> Result<HashMap<Section, Vec<String>>> {
-        let mut sections_to_tasks: HashMap<Section, Vec<String>> = HashMap::new();
+    fn list_all(&self) -> Result<IndexMap<Section, Vec<String>>> {
+        let mut sections_to_tasks: IndexMap<Section, Vec<String>> = IndexMap::new();
         let lines = self.lines()?;
         let task_lines = lines
             .iter()
@@ -220,6 +220,7 @@ impl<T: AsRef<Path>> Repo for FileBacked<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indexmap::IndexMap;
     use std::error::Error;
     use std::path::PathBuf;
     use std::result::Result;
@@ -254,9 +255,7 @@ mod tests {
                 let sections = file_repo.list_all()?;
                 assert_eq!(
                     sections,
-                    HashMap::from([$(
-                        ($key, $value.iter().map(|s| s.to_string()).collect()),
-                    )*])
+                    IndexMap::from([$(($key, $value),)*])
                 );
                 Ok(())
             }

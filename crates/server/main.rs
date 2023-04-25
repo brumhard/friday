@@ -13,10 +13,10 @@ use axum::{
     Extension, Json,
 };
 use friday_core::{DefaultManager, FileBacked, Manager, Section};
+use indexmap::IndexMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     net::SocketAddr,
     sync::{Arc, RwLock},
 };
@@ -63,7 +63,7 @@ pub async fn main() {
 }
 
 #[allow(clippy::unused_async)] // required for handler function signature
-async fn handle_get_tasks(State(mngr): State<Mngr>) -> Result<HashMap<Section, Vec<String>>> {
+async fn handle_get_tasks(State(mngr): State<Mngr>) -> Result<IndexMap<Section, Vec<String>>> {
     let sections = mngr.read().unwrap().sections().map_err(to_http_err)?;
     Ok((StatusCode::OK, Json(sections)))
 }
@@ -86,7 +86,7 @@ async fn handle_post_tasks(
     Path(section): Path<Section>,
     State(mngr): State<Mngr>,
     Json(input): Json<CreateTask>,
-) -> Result<HashMap<Section, Vec<String>>> {
+) -> Result<IndexMap<Section, Vec<String>>> {
     mngr.write()
         .unwrap()
         .add(&input.task, Some(&section.to_string()))
