@@ -1,4 +1,4 @@
-use crate::{Error, Result, Section};
+use crate::{error::Result, Error, Section};
 use core::fmt;
 use std::collections::HashMap;
 use std::fs::File;

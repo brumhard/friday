@@ -1,7 +1,13 @@
 #![warn(clippy::pedantic)]
 
+mod config;
+mod error;
+
+use config::{Action, Config};
+use error::{Error, Result};
+
 use colored::Colorize;
-use friday::{Action, Config, DefaultManager, Error, FileBacked, Manager, Result, Section};
+use friday_core::{DefaultManager, FileBacked, Manager, Section};
 use std::{
     collections::HashMap,
     env,
@@ -33,11 +39,16 @@ fn run(cfg: Config) -> Result<()> {
     let manager = DefaultManager::new(repo);
 
     match cfg.action {
-        Action::Add => manager.add(cfg.input.unwrap_or_default().as_str(), None),
-        Action::Show => show(manager.sections()?),
+        Action::Add => add(manager, cfg.input.unwrap_or_default().as_str()),
+        Action::Show => show(manager),
         Action::Edit => edit_file(&cfg.file),
         Action::Help => print_help(),
     }
+}
+
+fn add(manager: impl Manager, input: &str) -> Result<()> {
+    manager.add(input, None)?;
+    Ok(())
 }
 
 fn edit_file(path: &str) -> Result<()> {
@@ -69,7 +80,8 @@ fn edit_file(path: &str) -> Result<()> {
 }
 
 #[allow(clippy::unnecessary_wraps)] // easier to use in run
-fn show(sections: HashMap<Section, Vec<String>>) -> Result<()> {
+fn show(manager: impl Manager) -> Result<()> {
+    let sections = manager.sections()?;
     for (section, tasks) in sections {
         let section_header = format!("## {section}").cyan();
         println!("{section_header}");

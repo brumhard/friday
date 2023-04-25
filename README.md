@@ -13,7 +13,7 @@
 
 - error handling
   - use anyhow in binary crates, thiserror in libary crates
-  - cleanup error enum to not be CLI specific
+  - cleanup error enums to not be CLI specific
 - server
   - add tracing spans to server and replace logs with tracing <https://docs.rs/tracing/latest/tracing/>
   - add middlewares

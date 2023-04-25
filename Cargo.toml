@@ -1,32 +1,40 @@
 [package]
 name = "friday"
+authors = ["Tobias Brumhard <code@brumhard.com>"]
+description = "Manage stuff to do on fridays."
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+bench = false
+path = "crates/cli/main.rs"
+name = "friday"
+
+[[bin]]
+bench = false
+path = "crates/server/main.rs"
+name = "fridaypi"
+
+[workspace]
+members = [
+    "crates/http",
+    "crates/friday_core"
+]
 
 [dependencies]
+friday_core = {path  = "./crates/friday_core"}
+
 aide = { version = "0.10.0", features = ["axum", "macros"] }
-async-trait = "0.1.68"
 axum = "0.6.16"
 colored = "2.0.0"
 dirs = "5.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
-rayon = "1.7.0"
 schemars = { version = "0.8.12", features = ["derive_json_schema"] }
 serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.96"
-serde_with = "2.3.2"
 thiserror = "1.0.40"
 tokio = { version = "1.27.0", features = ["full"] }
 
 [dev-dependencies]
 tempdir = "0.3.7"
-mockall = "0.11.4"
 assert_cmd = "2.0.10"
-
-[features]
-default = ["axum"]
-# uses axum instead of this crate's asynchttp module
-axum = []

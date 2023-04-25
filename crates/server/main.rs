@@ -10,7 +10,7 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
-use friday::{DefaultManager, FileBacked, Manager, Section};
+use friday_core::{DefaultManager, FileBacked, Manager, Section};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,6 +21,7 @@ use std::{
 
 type Mngr = Arc<RwLock<dyn Manager + Sync + Send>>;
 
+#[tokio::main]
 pub async fn main() {
     let repo = FileBacked::new("./testing").unwrap();
     let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
@@ -110,10 +111,10 @@ struct ErrResponse {
 }
 
 #[allow(clippy::needless_pass_by_value)] // easier to use with this signature
-fn to_http_err(e: friday::Error) -> (StatusCode, Json<ErrResponse>) {
+fn to_http_err(e: friday_core::Error) -> (StatusCode, Json<ErrResponse>) {
     let status = match &e {
         e if e.to_string().contains("not found") => StatusCode::NOT_FOUND,
-        friday::Error::InvalidArgument(_) => StatusCode::BAD_REQUEST,
+        friday_core::Error::InvalidArgument(_) => StatusCode::BAD_REQUEST,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
     (

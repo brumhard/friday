@@ -1,4 +1,4 @@
-use crate::{Error, Repo, Result, Section};
+use crate::{error::Result, Error, Repo, Section};
 use std::{
     collections::HashMap,
     str,

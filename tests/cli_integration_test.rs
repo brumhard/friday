@@ -1,6 +1,7 @@
 use std::{error::Error, fs};
 
 use assert_cmd::Command;
+use tempdir;
 
 fn friday_cli() -> Command {
     Command::cargo_bin("friday").unwrap()
