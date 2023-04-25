@@ -225,11 +225,11 @@ mod tests {
     use std::path::PathBuf;
     use std::result::Result;
     use std::vec;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn new_creates_file_with_header_if_not_exists() -> Result<(), Box<dyn Error>> {
-        let tmp_dir = tempdir::TempDir::new("example")?;
+        let tmp_dir = TempDir::new()?;
         let file_path = tmp_dir.path().join("testing");
         FileBacked::new(&file_path)?;
         assert!(file_path.exists());
@@ -240,7 +240,7 @@ mod tests {
     // the returned temp_dir is only returned to keep the reference and not destroy it
     // before the function tests are done.
     fn setup(content: &str) -> Result<(FileBacked<PathBuf>, TempDir), Box<dyn Error>> {
-        let tmp_dir = tempdir::TempDir::new("example")?;
+        let tmp_dir = TempDir::new()?;
         let file_path = tmp_dir.path().join("testing");
         fs::write(&file_path, content)?;
         let file_repo = FileBacked::new(file_path)?;

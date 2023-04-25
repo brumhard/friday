@@ -1,7 +1,7 @@
 use std::{error::Error, fs};
 
 use assert_cmd::Command;
-use tempdir;
+use tempfile::TempDir;
 
 fn friday_cli() -> Command {
     Command::cargo_bin("friday").unwrap()
@@ -15,7 +15,7 @@ fn friday_cli() -> Command {
 // Anyways, it's nice to test the whole interface of the CLI as well e2e.
 #[test]
 fn it_prints_help_on_empty_action() {
-    let tmp_dir = tempdir::TempDir::new("testing").unwrap();
+    let tmp_dir = TempDir::new().unwrap();
     let cmd = friday_cli()
         .env("FRIDAY_FILE", tmp_dir.path().join("sth"))
         .assert()
@@ -31,7 +31,7 @@ fn it_prints_help_on_empty_action() {
 
 #[test]
 fn it_adds_to_file() -> Result<(), Box<dyn Error>> {
-    let tmp_dir = tempdir::TempDir::new("testing")?;
+    let tmp_dir = TempDir::new()?;
     let file_path = tmp_dir.path().join("friday.md");
     let to_add = "something that should be added";
     friday_cli()
