@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=$CARGO_HOME \
 EOF
 
 FROM base as build
-COPY src/ src/
+COPY crates/ crates/
 RUN --mount=type=cache,target=$CARGO_HOME \
     --mount=type=cache,target=$BUILD_TARGET <<EOF
     cargo build --release --bin fridaypi

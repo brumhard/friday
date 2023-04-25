@@ -56,6 +56,7 @@
                 cargo-audit
                 vhs
                 libiconv
+                just
                 (callPackage ./nix/spin.nix { })
               ];
 
