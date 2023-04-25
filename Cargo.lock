@@ -531,7 +531,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "friday_core",
  "http",
+ "serde_json",
  "spin-sdk",
  "wit-bindgen-rust",
 ]
