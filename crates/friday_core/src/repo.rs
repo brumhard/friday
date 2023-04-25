@@ -319,7 +319,7 @@ mod tests {
         let (file_repo, _tmp_dir) = setup("").unwrap();
         assert!(file_repo
             .list(Section::Custom("non-existent".to_string()))
-            .is_err())
+            .is_err());
     }
 
     #[test]

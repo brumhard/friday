@@ -1,4 +1,3 @@
-use friday_core;
 use std::{convert, io};
 
 // See https://kerkour.com/rust-error-handling

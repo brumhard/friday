@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use aide::{
     axum::{
         routing::{get, post},

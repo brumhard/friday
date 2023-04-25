@@ -85,7 +85,7 @@ impl<T: Repo> Manager for DefaultManager<T> {
 mod tests {
     use super::*;
     use crate::{MockRepo, Section};
-    use mockall::predicate::*;
+    use mockall::predicate::eq;
 
     #[test]
     fn test_rm_errors_on_multiple_matches() {
