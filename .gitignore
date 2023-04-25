@@ -5,3 +5,5 @@
 .envrc
 # file to test cli
 testing
+# spin
+.spin/

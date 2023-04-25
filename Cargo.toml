@@ -6,35 +6,44 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-bench = false
+required-features = ["cli"]
 path = "crates/cli/main.rs"
 name = "friday"
 
 [[bin]]
-bench = false
+required-features = ["api"]
 path = "crates/server/main.rs"
 name = "fridaypi"
 
 [workspace]
 members = [
     "crates/custom_http",
-    "crates/friday_core"
+    "crates/friday_core",
+    "crates/friday_spin"
 ]
 
 [dependencies]
 friday_core = {path  = "./crates/friday_core"}
-
-aide = { version = "0.10.0", features = ["axum", "macros"] }
-axum = "0.6.16"
-colored = "2.0.0"
-dirs = "5.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
-schemars = { version = "0.8.12", features = ["derive_json_schema"] }
-serde = { version = "1.0.160", features = ["derive"] }
-thiserror = "1.0.40"
-tokio = { version = "1.27.0", features = ["full"] }
+
+# api dependencies
+serde = { version = "1.0.160", features = ["derive"], optional = true}
+schemars = { version = "0.8.12", features = ["derive_json_schema"], optional = true}
+aide = { version = "0.10.0", features = ["axum", "macros"], optional = true}
+axum = { version = "0.6.1", optional = true }
+tokio = { version = "1.27.0", features = ["full"], optional = true}
+
+# cli dependencies
+thiserror = {version = "1.0.40", optional = true}
+colored = {version = "2.0.0", optional = true}
+dirs = {version = "5.0.0", optional = true}
 
 [dev-dependencies]
 tempdir = "0.3.7"
 assert_cmd = "2.0.10"
+
+[features]
+default = ["api", "cli"]
+api = ["dep:serde", "dep:schemars", "dep:aide", "dep:axum", "dep:tokio"]
+cli = ["dep:colored", "dep:dirs", "dep:thiserror"]
