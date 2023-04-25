@@ -1,5 +1,5 @@
 [package]
-name = "http"
+name = "custom_http"
 version = "0.1.0"
 edition = "2021"
 description = "This is a toy http crate used to learn rust. It should not be used."

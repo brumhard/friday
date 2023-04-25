@@ -17,7 +17,7 @@ name = "fridaypi"
 
 [workspace]
 members = [
-    "crates/http",
+    "crates/custom_http",
     "crates/friday_core"
 ]
 
