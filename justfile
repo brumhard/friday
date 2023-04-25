@@ -24,7 +24,8 @@ audit:
 
 # generate demo gif
 vhs:
-    vhs demo.tape
+    cargo build --bin friday --release
+    vhs docs/demo.tape
 
 docker_repo := "github.com/brumhard/friday"
 docker_tag := `git describe --tags --abbrev=0 2>/dev/null || echo latest`

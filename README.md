@@ -3,11 +3,11 @@
 > Friday is a toy project to learn rust.
 > It provides a CLI as well as a REST API to manage tasks to do on fridays.
 
-![friday-logo](logo.png)
+![friday-logo](docs/logo.png)
 
 ## Demo
 
-![demo](demo.gif)
+![demo](docs/demo.gif)
 
 ## TODOs
 

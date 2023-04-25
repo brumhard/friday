@@ -57,6 +57,7 @@
                 vhs
                 libiconv
                 just
+                bat
                 (callPackage ./nix/spin.nix { })
               ];
 

@@ -1,4 +1,4 @@
-Output demo.gif
+Output docs/demo.gif
 
 Set Shell zsh
 Set PlaybackSpeed 0.5 # Make output 2 times slower
@@ -13,9 +13,9 @@ Set BorderRadius 10
 
 # Setup
 Hide
-Type "cargo build --bin friday --release && alias friday=./target/release/friday && clear"
+Type "alias friday=./target/release/friday && clear"
 Enter
-Sleep 3s
+Sleep 2s
 Show
 
 Type "friday help"
@@ -34,6 +34,8 @@ Enter
 Enter
 Sleep 1s
 
+Type "by default all tasks are stored in a Markdown file"
+Ctrl+C
 Type "bat friday.md"
 Enter
 Sleep 5s
