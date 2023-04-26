@@ -1,9 +1,7 @@
 # rust
-/target
+target/
 # direnv
 .direnv/
 .envrc
 # file to test cli
 testing
-# spin
-.spin/

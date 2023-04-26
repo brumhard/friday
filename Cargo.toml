@@ -7,19 +7,18 @@ edition = "2021"
 
 [[bin]]
 required-features = ["cli"]
-path = "crates/cli/main.rs"
+path = "crates/friday/cli/main.rs"
 name = "friday"
 
 [[bin]]
 required-features = ["api"]
-path = "crates/server/main.rs"
+path = "crates/friday/api/main.rs"
 name = "fridaypi"
 
 [workspace]
 members = [
     "crates/custom_http",
     "crates/friday_core",
-    "crates/friday_spin"
 ]
 
 [dependencies]
