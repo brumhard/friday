@@ -10,23 +10,7 @@ test:
     cargo test --workspace
 
 fmt:
-    # extra unstable options are enabled here
-    # see https://github.com/rust-lang/rustfmt/issues/5511
-    cargo fmt -- \
-        --config wrap_comments=true \
-        --config reorder_imports=true \
-        --config imports_layout=HorizontalVertical \
-        --config imports_granularity=Crate \
-        --config group_imports=StdExternalCrate \
-        --config format_code_in_doc_comments=true \
-        --config format_macro_matchers=true \
-        --config format_macro_bodies=true \
-        --config blank_lines_upper_bound=1 \
-        --config condense_wildcard_suffixes=true \
-        --config use_field_init_shorthand=true \
-        --config use_try_shorthand=true \
-        --config use_small_heuristics=max \
-
+    cargo +nightly fmt
 
 # lint everything
 lint $mode="":
