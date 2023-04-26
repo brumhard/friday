@@ -1,10 +1,8 @@
 use core::fmt;
-use std::default;
-use std::str;
+use std::{default, str};
 
 use schemars::JsonSchema;
-use serde_with::DeserializeFromStr;
-use serde_with::SerializeDisplay;
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 
 #[derive(
     Ord,

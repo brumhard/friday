@@ -73,11 +73,7 @@ impl Config {
             file = home.join(DEFAULT_FILE).to_string_lossy().to_string();
         }
 
-        Ok(Config {
-            action,
-            input,
-            file,
-        })
+        Ok(Config { action, input, file })
     }
 }
 
@@ -122,14 +118,7 @@ mod tests {
         let args = vec!["binary".to_string(), "show".to_string()];
         let env_vars = HashMap::from([("FRIDAY_FILE".to_string(), friday_file.clone())]);
         let cfg = Config::build(args.into_iter(), &env_vars)?;
-        assert_eq!(
-            cfg,
-            Config {
-                action: Action::Show,
-                file: friday_file,
-                input: None
-            }
-        );
+        assert_eq!(cfg, Config { action: Action::Show, file: friday_file, input: None });
         Ok(())
     }
 

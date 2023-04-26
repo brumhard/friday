@@ -1,17 +1,16 @@
 use std::{collections::HashMap, default, future::Future, sync::Arc};
 
 use async_trait::async_trait;
-
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, ToSocketAddrs},
 };
 
 pub use crate::http_types::*;
-use crate::Result;
 use crate::{
     http::{Method, Request},
     Error,
+    Result,
 };
 
 pub struct Router {
@@ -42,10 +41,7 @@ macro_rules! route_method {
 
 impl Router {
     pub fn new() -> Router {
-        Router {
-            handlers: vec![],
-            middlewares: vec![],
-        }
+        Router { handlers: vec![], middlewares: vec![] }
     }
     pub fn mw<M: Middleware + Sync + Send + 'static>(&mut self, mw: M) {
         self.middlewares.push(Box::new(mw));
@@ -91,9 +87,7 @@ pub struct Server<H: Handler> {
 
 impl<H: Handler + Send + Sync + 'static> Server<H> {
     pub fn new(handler: H) -> Server<H> {
-        Server {
-            handler: Arc::new(handler),
-        }
+        Server { handler: Arc::new(handler) }
     }
 
     pub async fn listen_and_serve<A: ToSocketAddrs>(&self, addr: A) -> Result<()> {
@@ -189,12 +183,7 @@ async fn parse_request<R: AsyncReadExt + Unpin>(reader: R) -> Result<Request> {
     let body = read_body(&mut reader, &headers).await?;
     log::debug!("got body: {:?}", body);
 
-    Ok(Request {
-        method,
-        path,
-        headers,
-        raw_body: body,
-    })
+    Ok(Request { method, path, headers, raw_body: body })
 }
 
 fn parse_first_line(s: &str) -> Result<(Method, String, String)> {
@@ -204,11 +193,7 @@ fn parse_first_line(s: &str) -> Result<(Method, String, String)> {
             "invalid number of elements in first HTTP line".to_string(),
         ));
     }
-    Ok((
-        parts[0].parse()?,
-        parts[1].to_string(),
-        parts[2].to_string(),
-    ))
+    Ok((parts[0].parse()?, parts[1].to_string(), parts[2].to_string()))
 }
 
 async fn read_body(
@@ -219,9 +204,7 @@ async fn read_body(
     let mut body_buffer;
     // https://www.rfc-editor.org/rfc/rfc7230#section-3.2
     if headers.get("Transfer-Encoding").is_some() {
-        return Err(Error::InvalidArgument(
-            "Tranfer-Encoding is not supported".to_string(),
-        ));
+        return Err(Error::InvalidArgument("Tranfer-Encoding is not supported".to_string()));
     }
     if let Some(size_string) = headers.get("Content-Length") {
         let size: usize = size_string.parse().unwrap_or_default();

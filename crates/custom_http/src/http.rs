@@ -1,6 +1,3 @@
-pub use crate::http_types::*;
-use crate::{Error, Result};
-use rayon::prelude::*;
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Read, Write},
@@ -8,6 +5,11 @@ use std::{
     str::{self},
     thread,
 };
+
+use rayon::prelude::*;
+
+pub use crate::http_types::*;
+use crate::{Error, Result};
 
 struct FuncWrapper<'func, T: Write> {
     f: Box<dyn Fn(Request, T) + Send + Sync + 'func>,
@@ -35,8 +37,8 @@ impl Server<'_, TcpStream> {
         let listener = TcpListener::bind(addr)?;
         // 1. implementation with custom threadpool
         // this was using the threadpool from https://doc.rust-lang.org/stable/book/ch20-02-multithreaded.html
-        // before, but the thread::spawn only supports static contexts which makes it pretty hard to use
-        // it with self.
+        // before, but the thread::spawn only supports static contexts which makes it
+        // pretty hard to use it with self.
         // see https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282.
         //
         // 2. implementation with rayon
@@ -47,16 +49,13 @@ impl Server<'_, TcpStream> {
         // 3. implementation with tokio
         // To not block any threads on io tokio is a nice replacement: https://tokio.rs/tokio/tutorial.
         // This is not implemented here but in the asynchttp module.
-        listener
-            .incoming()
-            .par_bridge()
-            .for_each(|stream| match stream {
-                Ok(stream) => {
-                    log::debug!("Thread ID: {:?} - Handling request", thread::current().id(),);
-                    self.handle_connection(stream);
-                }
-                Err(e) => log::error!("error in TCP connection: {e}"),
-            });
+        listener.incoming().par_bridge().for_each(|stream| match stream {
+            Ok(stream) => {
+                log::debug!("Thread ID: {:?} - Handling request", thread::current().id(),);
+                self.handle_connection(stream);
+            }
+            Err(e) => log::error!("error in TCP connection: {e}"),
+        });
 
         Ok(())
     }
@@ -81,9 +80,7 @@ impl Server<'_, TcpStream> {
 
 impl<'handler, T: Write + 'handler> Server<'handler, T> {
     pub fn new() -> Server<'handler, T> {
-        Server {
-            handlers: Vec::new(),
-        }
+        Server { handlers: Vec::new() }
     }
 
     pub fn register_handler<H: Handler<T> + Send + Sync + 'handler>(
@@ -157,12 +154,7 @@ fn parse_request(reader: impl Read) -> Result<Request> {
 
     let body = read_body(reader, &headers)?;
 
-    Ok(Request {
-        method,
-        path,
-        headers,
-        raw_body: body,
-    })
+    Ok(Request { method, path, headers, raw_body: body })
 }
 
 fn parse_first_line(s: &str) -> Result<(Method, String, String)> {
@@ -172,11 +164,7 @@ fn parse_first_line(s: &str) -> Result<(Method, String, String)> {
             "invalid number of elements in first HTTP line".to_string(),
         ));
     }
-    Ok((
-        parts[0].parse()?,
-        parts[1].to_string(),
-        parts[2].to_string(),
-    ))
+    Ok((parts[0].parse()?, parts[1].to_string(), parts[2].to_string()))
 }
 
 fn read_body(mut reader: impl Read, headers: &HashMap<String, String>) -> Result<Option<String>> {
@@ -184,9 +172,7 @@ fn read_body(mut reader: impl Read, headers: &HashMap<String, String>) -> Result
     let mut body_buffer;
     // https://www.rfc-editor.org/rfc/rfc7230#section-3.2
     if headers.get("Transfer-Encoding").is_some() {
-        return Err(Error::InvalidArgument(
-            "Tranfer-Encoding is not supported".to_string(),
-        ));
+        return Err(Error::InvalidArgument("Tranfer-Encoding is not supported".to_string()));
     }
     if let Some(size_string) = headers.get("Content-Length") {
         let size: usize = size_string.parse().unwrap_or_default();

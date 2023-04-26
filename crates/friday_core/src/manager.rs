@@ -1,10 +1,11 @@
-use indexmap::IndexMap;
-
-use crate::{error::Result, Error, Repo, Section};
 use std::{
     str,
     sync::{Arc, RwLock},
 };
+
+use indexmap::IndexMap;
+
+use crate::{error::Result, Error, Repo, Section};
 
 pub trait Manager {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()>;
@@ -44,9 +45,7 @@ impl<T: Repo> DefaultManager<T> {
 impl<T: Repo> Manager for DefaultManager<T> {
     fn add(&self, task: &str, section: Option<&str>) -> Result<()> {
         if task.trim().is_empty() {
-            return Err(Error::InvalidArgument(
-                "expected non-empty task".to_string(),
-            ));
+            return Err(Error::InvalidArgument("expected non-empty task".to_string()));
         }
 
         self.repo.create(task, section.into())
@@ -61,32 +60,26 @@ impl<T: Repo> Manager for DefaultManager<T> {
     }
 
     fn rm(&self, pattern: &str, section: Option<&str>) -> Result<()> {
-        let matching_tasks: Vec<String> = self
-            .repo
-            .list(section.into())?
-            .into_iter()
-            .filter(|t| t.contains(pattern))
-            .collect();
+        let matching_tasks: Vec<String> =
+            self.repo.list(section.into())?.into_iter().filter(|t| t.contains(pattern)).collect();
         if matching_tasks.len() > 1 {
             return Err(Error::InvalidArgument(format!(
                 "found more than one match for pattern {pattern}"
             )));
         }
         if matching_tasks.is_empty() {
-            return Err(Error::InvalidArgument(format!(
-                "no match found for pattern {pattern}"
-            )));
+            return Err(Error::InvalidArgument(format!("no match found for pattern {pattern}")));
         }
-        self.repo
-            .delete(matching_tasks.get(0).unwrap(), section.into())
+        self.repo.delete(matching_tasks.get(0).unwrap(), section.into())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use mockall::predicate::eq;
+
     use super::*;
     use crate::{MockRepo, Section};
-    use mockall::predicate::eq;
 
     #[test]
     fn test_rm_errors_on_multiple_matches() {

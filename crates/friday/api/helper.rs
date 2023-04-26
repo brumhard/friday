@@ -11,17 +11,12 @@ pub fn enable_tracing() {
         .with_target("tower_http::trace::make_span", Level::DEBUG)
         .with_default(Level::INFO);
     let tracing_layer = tracing_subscriber::fmt::layer();
-    tracing_subscriber::registry()
-        .with(tracing_layer)
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(tracing_layer).with(filter).init();
 }
 
 pub async fn shutdown_signal() {
     let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
     };
 
     #[cfg(unix)]
@@ -45,10 +40,7 @@ pub async fn shutdown_signal() {
 
 pub fn openapi_spec() -> OpenApi {
     OpenApi {
-        info: Info {
-            description: Some("Friday API".to_string()),
-            ..Info::default()
-        },
+        info: Info { description: Some("Friday API".to_string()), ..Info::default() },
         ..OpenApi::default()
     }
 }

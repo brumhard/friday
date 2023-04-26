@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 
 mod helper;
-use helper::*;
+use std::sync::{Arc, RwLock};
 
 use aide::{
     axum::{
@@ -15,20 +15,15 @@ use axum::{
     extract::{Path, State},
     http::{header, StatusCode},
     response::Response,
-    Extension, Json,
+    Extension,
+    Json,
 };
 use friday_core::{DefaultManager, FileBacked, Manager, Section};
+use helper::*;
 use indexmap::IndexMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::{
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-};
-
 use tower_http::trace::TraceLayer;
-
-use tracing_subscriber::prelude::*;
 
 type Mngr = Arc<RwLock<dyn Manager + Sync + Send>>;
 
@@ -42,7 +37,7 @@ pub async fn main() {
     let mut api = openapi_spec();
 
     tracing::info!("serving on port 3000");
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = "0.0.0.0:3000".parse().unwrap();
     axum::Server::bind(&addr)
         .serve(
             api_router
@@ -72,10 +67,7 @@ pub fn routes() -> ApiRouter<Mngr> {
                     .unwrap()
             }),
         )
-        .route(
-            "/api.json",
-            get(|Extension(api): Extension<OpenApi>| async { Json(api) }),
-        )
+        .route("/api.json", get(|Extension(api): Extension<OpenApi>| async { Json(api) }))
 }
 
 #[allow(clippy::unused_async)] // required for handler function signature
@@ -89,11 +81,7 @@ async fn handle_get_tasks_in_section(
     Path(section): Path<Section>,
     State(mngr): State<Mngr>,
 ) -> Result<ListResponse<String>> {
-    let items = mngr
-        .read()
-        .unwrap()
-        .list(Some(&section.to_string()))
-        .map_err(to_http_err)?;
+    let items = mngr.read().unwrap().list(Some(&section.to_string())).map_err(to_http_err)?;
     Ok((StatusCode::OK, Json(ListResponse { items })))
 }
 
@@ -103,10 +91,7 @@ async fn handle_post_tasks(
     State(mngr): State<Mngr>,
     Json(input): Json<CreateTask>,
 ) -> Result<IndexMap<Section, Vec<String>>> {
-    mngr.write()
-        .unwrap()
-        .add(&input.task, Some(&section.to_string()))
-        .map_err(to_http_err)?;
+    mngr.write().unwrap().add(&input.task, Some(&section.to_string())).map_err(to_http_err)?;
     let sections = mngr.read().unwrap().sections().map_err(to_http_err)?;
     Ok((StatusCode::OK, Json(sections)))
 }
@@ -135,10 +120,5 @@ fn to_http_err(e: friday_core::Error) -> (StatusCode, Json<ErrResponse>) {
         friday_core::Error::InvalidArgument(_) => StatusCode::BAD_REQUEST,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
-    (
-        status,
-        Json(ErrResponse {
-            message: e.to_string(),
-        }),
-    )
+    (status, Json(ErrResponse { message: e.to_string() }))
 }

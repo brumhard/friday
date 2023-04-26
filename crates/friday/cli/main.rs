@@ -3,16 +3,16 @@
 mod config;
 mod error;
 
-use config::{Action, Config};
-use error::{Error, Result};
-
-use friday_core::{DefaultManager, FileBacked, Manager};
-use owo_colors::OwoColorize;
 use std::{
     env,
     io::{self},
     process::{exit, Command},
 };
+
+use config::{Action, Config};
+use error::{Error, Result};
+use friday_core::{DefaultManager, FileBacked, Manager};
+use owo_colors::OwoColorize;
 
 const DEFAULT_EDITOR: &str = "vi";
 

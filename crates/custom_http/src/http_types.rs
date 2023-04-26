@@ -22,9 +22,7 @@ impl str::FromStr for Method {
             "put" => Ok(Self::PUT),
             "patch" => Ok(Self::PATCH),
             "delete" => Ok(Self::DELETE),
-            invalid => Err(Error::InvalidArgument(format!(
-                "{invalid} is not an HTTP method"
-            ))),
+            invalid => Err(Error::InvalidArgument(format!("{invalid} is not an HTTP method"))),
         }
     }
 }
@@ -69,9 +67,6 @@ impl Response {
             status = 500;
             "serialization error".to_string()
         });
-        Response {
-            status,
-            body: Some(body),
-        }
+        Response { status, body: Some(body) }
     }
 }

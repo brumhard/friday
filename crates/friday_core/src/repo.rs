@@ -1,13 +1,11 @@
-use crate::{error::Result, Error, Section};
 use core::fmt;
-use indexmap::IndexMap;
-use std::fs::File;
-use std::io::Write;
-use std::str;
-use std::{fs, path::Path};
+use std::{fs, fs::File, io::Write, path::Path, str};
 
+use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
+
+use crate::{error::Result, Error, Section};
 
 #[cfg_attr(test, automock)]
 pub trait Repo {
@@ -38,11 +36,7 @@ impl LineContent {
             return x.to_string();
         }
 
-        self.to_string()
-            .split_whitespace()
-            .skip(1)
-            .collect::<Vec<&str>>()
-            .join(" ")
+        self.to_string().split_whitespace().skip(1).collect::<Vec<&str>>().join(" ")
     }
 }
 
@@ -99,20 +93,14 @@ impl<T: AsRef<Path>> FileBacked<T> {
                 current_section = content.stripped().parse().unwrap();
             }
 
-            lines.push(Line {
-                section: current_section.clone(),
-                content,
-            });
+            lines.push(Line { section: current_section.clone(), content });
         }
         Ok(lines)
     }
 
     fn dump_lines(&self, lines: &[Line]) -> Result<()> {
-        let content = lines
-            .iter()
-            .map(|l| l.content.to_string())
-            .collect::<Vec<String>>()
-            .join("\n");
+        let content =
+            lines.iter().map(|l| l.content.to_string()).collect::<Vec<String>>().join("\n");
         fs::write(&self.file, content)?;
         Ok(())
     }
@@ -162,10 +150,7 @@ impl<T: AsRef<Path>> Repo for FileBacked<T> {
         // insert task after last_line_in_section
         lines.insert(
             last_line_in_section.unwrap() + 1,
-            Line {
-                section,
-                content: LineContent::Task(format!("- {task}")),
-            },
+            Line { section, content: LineContent::Task(format!("- {task}")) },
         );
 
         self.dump_lines(&lines)
@@ -204,9 +189,7 @@ impl<T: AsRef<Path>> Repo for FileBacked<T> {
     fn list_all(&self) -> Result<IndexMap<Section, Vec<String>>> {
         let mut sections_to_tasks: IndexMap<Section, Vec<String>> = IndexMap::new();
         let lines = self.lines()?;
-        let task_lines = lines
-            .iter()
-            .filter(|l| matches!(l.content, LineContent::Task(_)));
+        let task_lines = lines.iter().filter(|l| matches!(l.content, LineContent::Task(_)));
         for line in task_lines {
             sections_to_tasks
                 .entry(line.section.clone())
@@ -219,13 +202,12 @@ impl<T: AsRef<Path>> Repo for FileBacked<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::{error::Error, path::PathBuf, result::Result, vec};
+
     use indexmap::IndexMap;
-    use std::error::Error;
-    use std::path::PathBuf;
-    use std::result::Result;
-    use std::vec;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn new_creates_file_with_header_if_not_exists() -> Result<(), Box<dyn Error>> {
@@ -237,8 +219,8 @@ mod tests {
         Ok(())
     }
 
-    // the returned temp_dir is only returned to keep the reference and not destroy it
-    // before the function tests are done.
+    // the returned temp_dir is only returned to keep the reference and not destroy
+    // it before the function tests are done.
     fn setup(content: &str) -> Result<(FileBacked<PathBuf>, TempDir), Box<dyn Error>> {
         let tmp_dir = TempDir::new()?;
         let file_path = tmp_dir.path().join("testing");
@@ -284,10 +266,7 @@ mod tests {
 ## Something
 - in something",
         (Section::Dump, vec!("in dump section")),
-        (
-            Section::Custom("something".to_string()),
-            vec!("in something")
-        )
+        (Section::Custom("something".to_string()), vec!("in something"))
     );
     test_list_all!(
         list_all_ignore_toplevel_headings_and_comments,
@@ -316,9 +295,7 @@ mod tests {
     #[test]
     fn list_returns_error_on_not_found() {
         let (file_repo, _tmp_dir) = setup("").unwrap();
-        assert!(file_repo
-            .list(Section::Custom("non-existent".to_string()))
-            .is_err());
+        assert!(file_repo.list(Section::Custom("non-existent".to_string())).is_err());
     }
 
     #[test]
