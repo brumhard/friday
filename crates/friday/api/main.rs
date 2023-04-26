@@ -8,8 +8,10 @@ use aide::{
     openapi::{Info, OpenApi},
 };
 use axum::{
+    body::Body,
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
+    response::Response,
     Extension, Json,
 };
 use friday_core::{DefaultManager, FileBacked, Manager, Section};
@@ -20,22 +22,42 @@ use std::{
     net::SocketAddr,
     sync::{Arc, RwLock},
 };
+use tower_http::trace::TraceLayer;
+use tracing::Level;
+use tracing_subscriber::prelude::*;
 
 type Mngr = Arc<RwLock<dyn Manager + Sync + Send>>;
 
 #[tokio::main]
 pub async fn main() {
+    let filter = tracing_subscriber::filter::Targets::new()
+        .with_target("tower_http::trace::on_response", Level::DEBUG)
+        .with_target("tower_http::trace::on_request", Level::DEBUG)
+        .with_target("tower_http::trace::make_span", Level::DEBUG)
+        .with_default(Level::INFO);
+    let tracing_layer = tracing_subscriber::fmt::layer();
+    tracing_subscriber::registry()
+        .with(tracing_layer)
+        .with(filter)
+        .init();
+
     let repo = FileBacked::new("./testing").unwrap();
     let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
     let routes = ApiRouter::new()
         .api_route("/tasks", get(handle_get_tasks))
         .api_route("/tasks/:section", get(handle_get_tasks_in_section))
-        // https://github.com/tamasfe/aide/pull/38
-        // .api_route(
-        //     "/tasks",
-        //     post(|| async { Redirect::permanent("/tasks/dump") }),
-        // )
         .api_route("/tasks/:section", post(handle_post_tasks))
+        .api_route(
+            "/tasks",
+            // NOTE: wait for this https://github.com/tamasfe/aide/pull/38
+            post(|| async {
+                Response::builder()
+                    .status(StatusCode::PERMANENT_REDIRECT)
+                    .header(header::LOCATION, "/tasks/dump")
+                    .body(Body::empty())
+                    .unwrap()
+            }),
+        )
         .route(
             "/api.json",
             get(|Extension(api): Extension<OpenApi>| async { Json(api) }),
@@ -50,12 +72,14 @@ pub async fn main() {
         ..OpenApi::default()
     };
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    tracing::info!("serving on port 3000");
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     axum::Server::bind(&addr)
         .serve(
             routes
                 .finish_api(&mut api)
                 .layer(Extension(api))
+                .layer(TraceLayer::new_for_http())
                 .into_make_service(),
         )
         .await
