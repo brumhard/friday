@@ -53,8 +53,8 @@
               cargo-audit
               vhs
               libiconv
-              just
               bat
+              mask
             ];
 
             shellHook = ''
