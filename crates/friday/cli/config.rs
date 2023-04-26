@@ -10,6 +10,7 @@ pub enum Action {
     Add,
     Help,
     Edit,
+    Version,
 }
 
 impl convert::TryFrom<&str> for Action {
@@ -19,6 +20,7 @@ impl convert::TryFrom<&str> for Action {
             "add" => Ok(Action::Add),
             "show" => Ok(Action::Show),
             "edit" => Ok(Action::Edit),
+            "version" => Ok(Action::Version),
             "help" | "" => Ok(Action::Help),
             cmd => Err(Error::InvalidCommand(cmd.to_string())),
         }

@@ -15,6 +15,7 @@ use friday_core::{DefaultManager, FileBacked, Manager};
 use owo_colors::OwoColorize;
 
 const DEFAULT_EDITOR: &str = "vi";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // see here: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
 fn main() {
@@ -42,6 +43,10 @@ fn run(cfg: Config) -> Result<()> {
         Action::Show => show(&manager),
         Action::Edit => edit_file(&cfg.file),
         Action::Help => print_help(),
+        Action::Version => {
+            println!("{VERSION}");
+            Ok(())
+        }
     }
 }
 
