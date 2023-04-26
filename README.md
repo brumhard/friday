@@ -18,3 +18,4 @@
   - add tracing spans to server and replace logs with tracing <https://docs.rs/tracing/latest/tracing/>
   - add middlewares
   - add graceful shutdown
+- fix nix, spin, docker
