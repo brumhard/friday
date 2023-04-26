@@ -53,6 +53,7 @@
               cargo-audit
               vhs
               libiconv
+              yq-go
               bat
               mask
             ];

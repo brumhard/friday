@@ -70,12 +70,11 @@ vhs docs/demo.tape
 
 > Builds the docker image
 
-By default it tries to take the latest tag and use that as a tag.
-If that is not found it uses `latest` instead.
+By default it takes the package version defined in the `Cargo.toml`.
 
 ```bash
 repo=${repo:-"ghcr.io/brumhard/friday"}
-default_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo latest)
+default_tag=$(yq -r '.package.version' Cargo.toml -o json)
 tag=${tag:-$default_tag}
 
 docker build -t "$repo:$tag" .
