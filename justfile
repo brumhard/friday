@@ -10,13 +10,16 @@ test:
     cargo test --workspace
 
 # lint everything
-lint mode="":
+lint $mode="":
     #!/usr/bin/env bash
     args="--workspace"
-    if [ "{{mode}}" == "ci" ]; then
+    if [ "$mode" == "ci" ]; then
         args="--workspace --all-targets --all-features -- -D warnings"
     fi
     cargo clippy $args
+
+fix:
+    cargo fix --workspace --allow-dirty
 
 # run vulnerability scan
 audit:

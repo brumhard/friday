@@ -1,11 +1,14 @@
 #![warn(clippy::pedantic)]
 
+mod helper;
+use helper::*;
+
 use aide::{
     axum::{
         routing::{get, post},
         ApiRouter,
     },
-    openapi::{Info, OpenApi},
+    openapi::OpenApi,
 };
 use axum::{
     body::Body,
@@ -22,28 +25,39 @@ use std::{
     net::SocketAddr,
     sync::{Arc, RwLock},
 };
+
 use tower_http::trace::TraceLayer;
-use tracing::Level;
+
 use tracing_subscriber::prelude::*;
 
 type Mngr = Arc<RwLock<dyn Manager + Sync + Send>>;
 
 #[tokio::main]
 pub async fn main() {
-    let filter = tracing_subscriber::filter::Targets::new()
-        .with_target("tower_http::trace::on_response", Level::DEBUG)
-        .with_target("tower_http::trace::on_request", Level::DEBUG)
-        .with_target("tower_http::trace::make_span", Level::DEBUG)
-        .with_default(Level::INFO);
-    let tracing_layer = tracing_subscriber::fmt::layer();
-    tracing_subscriber::registry()
-        .with(tracing_layer)
-        .with(filter)
-        .init();
+    enable_tracing();
 
     let repo = FileBacked::new("./testing").unwrap();
     let manager = Arc::new(RwLock::new(DefaultManager::new(repo)));
-    let routes = ApiRouter::new()
+    let api_router = routes().with_state(manager);
+    let mut api = openapi_spec();
+
+    tracing::info!("serving on port 3000");
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    axum::Server::bind(&addr)
+        .serve(
+            api_router
+                .finish_api(&mut api)
+                .layer(Extension(api))
+                .layer(TraceLayer::new_for_http())
+                .into_make_service(),
+        )
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
+}
+
+pub fn routes() -> ApiRouter<Mngr> {
+    ApiRouter::new()
         .api_route("/tasks", get(handle_get_tasks))
         .api_route("/tasks/:section", get(handle_get_tasks_in_section))
         .api_route("/tasks/:section", post(handle_post_tasks))
@@ -62,28 +76,6 @@ pub async fn main() {
             "/api.json",
             get(|Extension(api): Extension<OpenApi>| async { Json(api) }),
         )
-        .with_state(manager);
-
-    let mut api = OpenApi {
-        info: Info {
-            description: Some("Friday API".to_string()),
-            ..Info::default()
-        },
-        ..OpenApi::default()
-    };
-
-    tracing::info!("serving on port 3000");
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    axum::Server::bind(&addr)
-        .serve(
-            routes
-                .finish_api(&mut api)
-                .layer(Extension(api))
-                .layer(TraceLayer::new_for_http())
-                .into_make_service(),
-        )
-        .await
-        .unwrap();
 }
 
 #[allow(clippy::unused_async)] // required for handler function signature
