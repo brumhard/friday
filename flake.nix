@@ -3,15 +3,24 @@
     nixpkgs.url = "github:nixos/nixpkgs";
     utils.url = "github:numtide/flake-utils";
     naersk.url = "github:nix-community/naersk";
+    fenix.url = "github:nix-community/fenix";
   };
 
-  outputs = { self, nixpkgs, utils, naersk }: utils.lib.eachDefaultSystem
+  outputs = { self, nixpkgs, utils, naersk, fenix }: utils.lib.eachDefaultSystem
     (system:
       let
         name = "friday";
         version = "latest";
-        pkgs = import nixpkgs { inherit system; };
-        naersk' = pkgs.callPackage naersk { };
+        # https://discourse.nixos.org/t/using-nixpkgs-legacypackages-system-vs-import/17462/7
+        pkgs = nixpkgs.legacyPackages.${system};
+        toolchain = fenix.packages.${system}.fromToolchainFile {
+          file = ./rust-toolchain;
+          sha256 = "sha256-eMJethw5ZLrJHmoN2/l0bIyQjoTX1NsvalWSscTixpI=";
+        };
+        naersk' = naersk.lib.${system}.override {
+          cargo = toolchain;
+          rustc = toolchain;
+        };
       in
       with pkgs;
       rec {
@@ -44,9 +53,6 @@
 
         # switched to rustup for targets as defined in https://nixos.wiki/wiki/Rust
         devShell =
-          let
-            rustVersion = "1.69";
-          in
           mkShell {
             packages = [
               rustup
@@ -60,8 +66,6 @@
 
             shellHook = ''
               export FRIDAY_FILE=testing
-              rustup default ${rustVersion}
-              rustup target add wasm32-wasi
             '';
           };
       }

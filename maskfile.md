@@ -73,11 +73,13 @@ vhs docs/demo.tape
 By default it takes the package version defined in the `Cargo.toml`.
 
 ```bash
+set -eo pipefail
 repo=${repo:-"ghcr.io/brumhard/friday"}
-default_tag=$(yq -r '.package.version' Cargo.toml -o json)
+default_tag=$(yq -o json -r '.package.version' Cargo.toml)
 tag=${tag:-$default_tag}
+rust_version=$(yq -p toml -o json -r '.toolchain.channel' rust-toolchain ) 
 
-docker build -t "$repo:$tag" .
+docker build --build-arg "RUST_VERSION=$rust_version" -t "$repo:$tag" .
 ```
 
 ## ci

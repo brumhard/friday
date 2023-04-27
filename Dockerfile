@@ -1,6 +1,9 @@
 #syntax=docker/dockerfile:1.5.2
 
-FROM --platform=$TARGETPLATFORM rust:1.68.2 as base
+# this should be set to the value from rust-toolchain
+ARG RUST_VERSION=invalid
+
+FROM --platform=$TARGETPLATFORM rust:${RUST_VERSION}-slim as base
 WORKDIR /somewhere
 ENV CARGO_HOME="/cache/cargo/"
 ENV BUILD_TARGET="/somewhere/target"
